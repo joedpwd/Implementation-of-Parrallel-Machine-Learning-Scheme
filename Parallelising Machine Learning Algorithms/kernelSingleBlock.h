@@ -5,6 +5,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
-int main();
-__global__ void doit(float *a);
+int singleBlock();
+__global__ void gaussianKernel(float* devGaussianMat, int height, int width);

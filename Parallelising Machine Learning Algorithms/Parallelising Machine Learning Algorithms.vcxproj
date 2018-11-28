@@ -78,10 +78,13 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CudaCompile Include="kernel.cu" />
+    <CudaCompile Include="kernelSingleBlock.cu" />
+    <CudaCompile Include="kernelSingleThread.cu" />
+    <CudaCompile Include="main.cu" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="kernel.h" />
+    <ClInclude Include="kernelSingleBlock.h" />
+    <ClInclude Include="kernelSingleThread.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
