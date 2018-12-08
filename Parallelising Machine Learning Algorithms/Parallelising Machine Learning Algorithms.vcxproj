@@ -78,11 +78,13 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <CudaCompile Include="GaussianLUSingleBlock.cu" />
     <CudaCompile Include="kernelSingleBlock.cu" />
     <CudaCompile Include="kernelSingleThread.cu" />
     <CudaCompile Include="main.cu" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="GaussianLUSingleBlock.h" />
     <ClInclude Include="kernelSingleBlock.h" />
     <ClInclude Include="kernelSingleThread.h" />
   </ItemGroup>
