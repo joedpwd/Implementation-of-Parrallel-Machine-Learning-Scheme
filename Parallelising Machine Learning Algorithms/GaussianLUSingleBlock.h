@@ -7,5 +7,5 @@
 #include <cstdlib>
 #include <cstring>
 
-int singleBlock();
+int singleLUBlock();
 __global__ void gaussianLUKernel(float* devGaussianMat, int height, int width);

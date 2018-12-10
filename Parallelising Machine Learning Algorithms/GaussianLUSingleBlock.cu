@@ -1,14 +1,14 @@
 
 #include "GaussianLUSingleBlock.h"
 
-const int Dimensions = 14;
+const int Dimensions = 3;
 const int Radon = Dimensions + 2;
-const int M = Radon
+const int M = Radon;
 
 const int threadsX = 32;
 const int threadsY = 32;
 
-__global__ void gaussianLUKernel(float* devGaussianMat/*, const int M*/) {
+__global__ void gaussianLUKernel(float* devU, float* devL, float* devP/*, const int M*/) {
 
 	//Tell one thread to load float devGaussianMat into a shared memory.
 	__shared__ float sharedU[M][M];
@@ -28,8 +28,14 @@ __global__ void gaussianLUKernel(float* devGaussianMat/*, const int M*/) {
 	int y = threadIdx.y;
 	float temp;
 
-	if (y < M && x < M)
-		sharedU[y][x] = *(devGaussianMat + y * M + x);
+	if (y < M && x < M) {
+		sharedU[y][x] = *(devU + y * M + x);
+		if (y == x)
+			sharedL[y][x] = sharedP[y][x] = 1;
+		else
+			sharedL[y][x] = sharedP[y][x] = 0;
+	}
+
 	__syncthreads();
 
 	//printf("Block Dim %d\t%d", blockDim.x, blockDim.y);
@@ -39,8 +45,28 @@ __global__ void gaussianLUKernel(float* devGaussianMat/*, const int M*/) {
 		printf("Dimensions are too large\n");
 	else {
 
-		for (k = 0; k < M; k++) {
+		for (k = 0; k < M-1; k++) {
 
+			if (y == 1 && x == 1) {
+				for (i = 0; i < M*M; i++) {
+					if (i % M == 0)
+						printf("\n");
+					printf("%.2f\t", sharedU[i / M][i % M]);
+				}
+				printf("\n\n\n");
+				for (i = 0; i < M*M; i++) {
+					if (i % M == 0)
+						printf("\n");
+					printf("%.2f\t", sharedL[i / M][i % M]);
+				}
+				printf("\n\n\n");
+				for (i = 0; i < M*M; i++) {
+					if (i % M == 0)
+						printf("\n");
+					printf("%.2f\t", sharedP[i / M][i % M]);
+				}
+				printf("\n\n\n");
+			}
 			/*if (y == 1 && x == 1) {
 
 				/*for (t = 0; t < width*height; t++) {
@@ -60,26 +86,39 @@ __global__ void gaussianLUKernel(float* devGaussianMat/*, const int M*/) {
 			maxVal = 0;
 
 			for (i = k; i < M; i++) {
-				if (abs(sharedU[i][k] > maxVal)
+				if (abs(sharedU[i][k] > maxVal))
 					maxIndex = i;
 			}
-			if(maxIndex = k)
+			__syncthreads();
+			if(maxIndex == k)
 				continue;
 			else {
-				if()
+				if ((y == 0) && (x >= k) && (x < M)) {
+					switchRow[x] = sharedU[maxIndex][x];
+					sharedU[maxIndex][x] = sharedU[k][x];
+					sharedU[k][x] = switchRow[x];
+				}
+				__syncthreads();
+				if ((y == 0) && (x >= 0) && (x < k-1)) {
+					switchRow[x] = sharedL[maxIndex][x];
+					sharedL[maxIndex][x] = sharedL[k][x];
+					sharedL[k][x] = switchRow[x];
+				}
+				__syncthreads();
+				if ((y == 0) && (x >= 0) && (x < M)) {
+					switchRow[x] = sharedP[maxIndex][x];
+					sharedP[maxIndex][x] = sharedP[k][x];
+					sharedP[k][x] = switchRow[x];
+				}
+				__syncthreads();
 			}
 
-			if (sharedMat[i][i] != 1) {
-				temp = sharedMat[i][i];
-				if (y == i && x <= width)
-					sharedMat[y][x] = sharedMat[y][x] / temp;
-				//CHECK FOR 0 ON DIAGONAL
-			}
+			if ((y >= k + 1) && (y < M) && (x == 0))
+				sharedL[y][k] = sharedU[y][k] / sharedU[k][k];
 			__syncthreads();
-
-			if (((y < i) || ((y > i) && (y < height))) && x < width)
-				sharedMat[y][x] = sharedMat[y][x] - sharedMat[y][i] * sharedMat[i][x];
-			__syncthreads();
+			if ((y >= k + 1) && (y < M) && (x >= k) && (x < M))
+				sharedU[y][x] = sharedU[y][x] - (sharedL[y][k] * sharedU[k][x]);
+		
 			/*for (k = 0; k < height; k++) {
 
 				if (k == i)
@@ -109,11 +148,11 @@ __global__ void gaussianLUKernel(float* devGaussianMat/*, const int M*/) {
 			}
 			printf("\n\n");
 		}*/
-
-		if (y < height && x < width)
-			//memcpy((devGaussianMat + y * width + x), (sharedMat + y * width + x), sizeof(float));
-			*(devGaussianMat + y * width + x) = sharedMat[y][x];
-
+		if (y < M && x < M) {
+			*(devU + y * M + x) = sharedU[y][x];
+			*(devL + y * M + x) = sharedL[y][x];
+			*(devP + y * M + x) = sharedP[y][x];
+		}
 
 	}
 
@@ -127,7 +166,7 @@ __global__ void gaussianLUKernel(float* devGaussianMat/*, const int M*/) {
 	}*/
 
 }
-int singleBlock()
+int singleLUBlock()
 {
 
 	//TODO
@@ -139,11 +178,17 @@ int singleBlock()
 	float r;
 	cudaEvent_t start, stop;
 
-	float* hostGaussianMat = (float *)malloc(height * width * sizeof(float));
+	float* hostU = (float *)malloc(M * M * sizeof(float));
+	float* hostL = (float *)malloc(M * M * sizeof(float));
+	float* hostP = (float *)malloc(M * M * sizeof(float));
 
-	float* devGaussianMat;
+	float *devU;
+	float *devL;
+	float *devP;
 
-	cudaMalloc(&(devGaussianMat), height * width * sizeof(float));
+	cudaMalloc(&(devU), M * M * sizeof(float));
+	cudaMalloc(&(devL), M * M * sizeof(float));
+	cudaMalloc(&(devP), M * M * sizeof(float));
 
 	dim3 grid(1, 1, 1);
 	dim3 block(threadsY, threadsX, 1);
@@ -151,24 +196,38 @@ int singleBlock()
 
 	//For now we'll just fill matrices with dummy values
 
-	for (i = 0; i < height*width; i++)
-		*(hostGaussianMat + i) = static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / 10000.0));
+	for (i = 0; i < M*M; i++)
+		*(hostU + i) = static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / 10000.0));
 
 	cudaEventCreate(&start);
 	cudaEventCreate(&stop);
 	cudaEventRecord(start, 0);
 
-	cudaMemcpy(devGaussianMat, hostGaussianMat, height * width * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(devU, hostU, M * M * sizeof(float), cudaMemcpyHostToDevice);
 
-	gaussianLUKernel << <grid, block >> > (devGaussianMat/*, Radon*/);
+	gaussianLUKernel << <grid, block >> > (devU, devL, devP/*, Radon*/);
 
-	cudaMemcpy(hostGaussianMat, devGaussianMat, height * width * sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(hostU, devU, M * M * sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(hostL, devL, M * M * sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(hostP, devP, M * M * sizeof(float), cudaMemcpyDeviceToHost);
 
-	/*for (i = 0; i < width*height; i++) {
-		if (i % width == 0)
+	for (i = 0; i < M*M; i++) {
+		if (i % M == 0)
 			printf("\n");
-		printf("%.2f\t", *(hostGaussianMat + i));
-	}*/
+		printf("%.2f\t", *(hostU + i));
+	}
+	printf("\n\n\n");
+	for (i = 0; i < M*M; i++) {
+		if (i % M == 0)
+			printf("\n");
+		printf("%.2f\t", *(hostL + i));
+	}
+	printf("\n\n\n");
+	for (i = 0; i < M*M; i++) {
+		if (i % M == 0)
+			printf("\n");
+		printf("%.2f\t", *(hostP + i));
+	}
 
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);
@@ -181,8 +240,12 @@ int singleBlock()
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
 
-	cudaFree(devGaussianMat);
+	cudaFree(devU);
+	cudaFree(devL);
+	cudaFree(devP);
 
-	free(hostGaussianMat);
+	free(hostU);
+	free(hostL);
+	free(hostP);
 	return 0;
 }
