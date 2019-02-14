@@ -52,7 +52,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;cusolver.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
@@ -79,14 +79,22 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <CudaCompile Include="GaussianLUSingleBlock.cu" />
+    <CudaCompile Include="kernelMatrixMultiplication.cu" />
     <CudaCompile Include="kernelSingleBlock.cu" />
     <CudaCompile Include="kernelSingleThread.cu" />
     <CudaCompile Include="main.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GaussianLUSingleBlock.h" />
+    <ClInclude Include="denseLUSolverExample.h" />
+    <ClInclude Include="denseLUSolver.h" />
+    <ClInclude Include="kernelMatrixMultiplication.h" />
     <ClInclude Include="kernelSingleBlock.h" />
     <ClInclude Include="kernelSingleThread.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="denseLUSolver.cpp" />
+    <ClCompile Include="denseLUSolverExample.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

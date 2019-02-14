@@ -1,5 +1,6 @@
 
 #include "GaussianLUSingleBlock.h"
+#include "kernelMatrixMultiplication.h"
 
 const int Dimensions = 3;
 const int Radon = Dimensions + 2;
@@ -178,17 +179,21 @@ int singleLUBlock()
 	float r;
 	cudaEvent_t start, stop;
 
+	float* original = (float *)malloc(M * M * sizeof(float));
 	float* hostU = (float *)malloc(M * M * sizeof(float));
 	float* hostL = (float *)malloc(M * M * sizeof(float));
 	float* hostP = (float *)malloc(M * M * sizeof(float));
+	float* hostCompare = (float *)malloc(M * M * sizeof(float));
 
 	float *devU;
 	float *devL;
 	float *devP;
+	float *devCompare;
 
 	cudaMalloc(&(devU), M * M * sizeof(float));
 	cudaMalloc(&(devL), M * M * sizeof(float));
 	cudaMalloc(&(devP), M * M * sizeof(float));
+	cudaMalloc(&(devCompare), M * M * sizeof(float));
 
 	dim3 grid(1, 1, 1);
 	dim3 block(threadsY, threadsX, 1);
@@ -197,7 +202,7 @@ int singleLUBlock()
 	//For now we'll just fill matrices with dummy values
 
 	for (i = 0; i < M*M; i++)
-		*(hostU + i) = static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / 10000.0));
+		*(original+i) = *(hostU + i) = static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / 10000.0));
 
 	cudaEventCreate(&start);
 	cudaEventCreate(&stop);
@@ -205,11 +210,14 @@ int singleLUBlock()
 
 	cudaMemcpy(devU, hostU, M * M * sizeof(float), cudaMemcpyHostToDevice);
 
-	gaussianLUKernel << <grid, block >> > (devU, devL, devP/*, Radon*/);
+	gaussianLUKernel <<<grid, block >>> (devU, devL, devP/*, Radon*/);
 
+	matrixMultiplicationKernel <<<grid, block >>> (devCompare, devL, devU, M, M, M);
+	
 	cudaMemcpy(hostU, devU, M * M * sizeof(float), cudaMemcpyDeviceToHost);
 	cudaMemcpy(hostL, devL, M * M * sizeof(float), cudaMemcpyDeviceToHost);
 	cudaMemcpy(hostP, devP, M * M * sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(hostCompare, devCompare, M * M * sizeof(float), cudaMemcpyDeviceToHost);
 
 	for (i = 0; i < M*M; i++) {
 		if (i % M == 0)
@@ -229,6 +237,18 @@ int singleLUBlock()
 		printf("%.2f\t", *(hostP + i));
 	}
 
+	for (i = 0; i < M*M; i++) {
+		if (i % M == 0)
+			printf("\n");
+		printf("%.2f\t", *(hostCompare + i));
+	}
+
+	for (i = 0; i < M*M; i++) {
+		if (i % M == 0)
+			printf("\n");
+		printf("%.2f\t", *(original + i));
+	}
+
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);
 
@@ -243,9 +263,12 @@ int singleLUBlock()
 	cudaFree(devU);
 	cudaFree(devL);
 	cudaFree(devP);
+	cudaFree(devCompare);
 
 	free(hostU);
 	free(hostL);
 	free(hostP);
+	free(hostCompare);
+	free(original);
 	return 0;
 }
