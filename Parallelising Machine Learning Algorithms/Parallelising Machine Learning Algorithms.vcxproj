@@ -88,6 +88,7 @@
     <ClInclude Include="GaussianLUSingleBlock.h" />
     <ClInclude Include="denseLUSolverExample.h" />
     <ClInclude Include="denseLUSolver.h" />
+    <ClInclude Include="main.h" />
     <ClInclude Include="kernelMatrixMultiplication.h" />
     <ClInclude Include="kernelSingleBlock.h" />
     <ClInclude Include="kernelSingleThread.h" />
