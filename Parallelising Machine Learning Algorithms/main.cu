@@ -15,7 +15,7 @@ int main(int argc, char **argv) {
 
 	const int r = d + 2; //Assuming d = 2
 	
-	const int h = 2; //Hyper parameter
+	const int h = 1; //Hyper parameter
 
 	const int m = d + 1; //Equivalent to d + 1
 
@@ -31,6 +31,35 @@ int main(int argc, char **argv) {
 
 	double *data = (double *)malloc(sizeof(double) * rh * d);
 
+	i = 0;
+
+	std::ifstream dataFile;
+	std::string t;
+	std::string::size_type sz;
+	dataFile.open("C:/Users/jxd45/Documents/Python Scripts/csvtest.csv");
+	long long *test = (long long *)malloc(sizeof(long long));
+	if (dataFile.is_open())
+	{
+		while (std::getline(dataFile, t))
+		{
+			std::cout << t << '\n';
+			sz = 0;
+			for (j = 0; j < d; j++) {
+				*test = std::stoll(t.substr(sz), &sz);
+				sz++;
+				*(data + (i++)) = *reinterpret_cast<double *>(test);
+			}
+		}
+		dataFile.close();
+	}
+
+	else
+	{
+		std::cout << "Unable to open file";
+
+		return 0;
+	}
+
 	/*(data) = 141.83527105;
 	*(data+1) = 813.5546238;
 	*(data+2) = 156.99282842;
@@ -40,7 +69,7 @@ int main(int argc, char **argv) {
 	*(data+6) = 153.36539951;
 	*(data+7) = 974.17111871;*/
 
-	*(data) = 139.82134402;
+	/*(data) = 139.82134402;
 	*(data+1) = 462.9137674;
 	*(data+2) = 154.98607891;
 	*(data+3) = 1334.30439163;
@@ -71,8 +100,11 @@ int main(int argc, char **argv) {
 	*(data+28) = 163.72618895;
 	*(data+29) = 969.27309617;
 	*(data+30) = 134.50651337;
-	*(data+31) = 994.33789174;
+	*(data+31) = 994.33789174;*/
 
+	for (i = 0; i < rh * d; i++) {
+		printf("%.10f\n", *(data + i));
+	}
 
 	for (i = 0; i < h; i++) {
 		for (j = 0; j < pow(r, h-1 - i); j++) {
@@ -80,14 +112,13 @@ int main(int argc, char **argv) {
 		}
 		for (j = 0; j < pow(r, h-1 - i); j++) {
 			for(k=0;k<d;k++)
-				*(data + (j*d) + k) = *(data + (4*j*d) + k);
+				*(data + (j*d) + k) = *(data + (r*j*d) + k);
 		}
 	}
 
 	/*for (i = 0; i < d; i++) {
-		printf("%.5f\n", *(data+i));
+		printf("%.5f\n", *(data + i));
 	}*/
-
 
 	/*for (i = 0; i < rh; i++) {
 		data[i][0] = rand() % 50;
@@ -156,11 +187,12 @@ int main(int argc, char **argv) {
 		//printf("%.5f\n", lambda);
 		printf("%.5f\n", hypothesis[i]);
 	}*/
-	
+	free(test);
 	free(data);
 }
 
 void radonInstance(double *dataPoints, const int d) {
+
 	int i, j;
 
 	const int r = d + 2; //Assuming d = 2
@@ -169,9 +201,6 @@ void radonInstance(double *dataPoints, const int d) {
 
 	double *luSolverA = (double *)malloc(sizeof(double)*m*m);
 	double *luSolverB = (double *)malloc(sizeof(double)*m);
-
-	const int lda = m;
-	const int ldb = m;
 
 	for (j = 0; j < d; j++) {
 		luSolverB[j] = -*(dataPoints+j);
@@ -193,6 +222,10 @@ void radonInstance(double *dataPoints, const int d) {
 	double *hostLU = (double *)(malloc(m*m * sizeof(double)));
 	int *hostIpiv = (int *)(malloc(m * sizeof(int)));
 	int *hostInfo = (int *)(malloc(sizeof(int)));
+
+	long long *Acopy;
+	long long *Bcopy;
+	long long *Xcopy;
 
 	for (i = 0; i < m*m; i++) {
 		*(hostA + i) = luSolverA[i];
@@ -235,6 +268,32 @@ void radonInstance(double *dataPoints, const int d) {
 		printf("%.5f\n", hypothesis[i]);
 		*(dataPoints + i) = hypothesis[i];
 	}
+
+	Acopy = reinterpret_cast<long long *>(hostA);
+	Bcopy = reinterpret_cast<long long *>(hostB);
+	Xcopy = reinterpret_cast<long long *>(hostX);
+
+	std::ofstream A, B, X;
+	A.open("C:/Users/jxd45/Documents/Python Scripts/A.csv", std::ios::out | std::ios::app);
+	B.open("C:/Users/jxd45/Documents/Python Scripts/B.csv", std::ios::out | std::ios::app);
+	X.open("C:/Users/jxd45/Documents/Python Scripts/X.csv", std::ios::out | std::ios::app);
+	if (A.fail() | B.fail() | X.fail()) {
+		std::cout << "Unable to open file";
+	}
+	else {
+		for (i = 0; i < m; i++) {
+			for (j = 0; j < m-1; j++) {
+				A << *(Acopy + i * m + j) << ",";
+			}
+			A << *(Acopy + i * m + j) << std::endl;
+			B << *(Bcopy + i) << std::endl;
+			X << *(Xcopy + i) << std::endl;
+		}
+	}
+
+	//free(Acopy);
+	//free(Bcopy);
+	//free(Xcopy);
 
 	free(luSolverA);
 	free(luSolverB);

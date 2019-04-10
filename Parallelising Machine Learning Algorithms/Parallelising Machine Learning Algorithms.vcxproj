@@ -78,24 +78,18 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CudaCompile Include="GaussianLUSingleBlock.cu" />
     <CudaCompile Include="kernelMatrixMultiplication.cu" />
-    <CudaCompile Include="kernelSingleBlock.cu" />
-    <CudaCompile Include="kernelSingleThread.cu" />
     <CudaCompile Include="main.cu" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GaussianLUSingleBlock.h" />
     <ClInclude Include="denseLUSolverExample.h" />
     <ClInclude Include="denseLUSolver.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="kernelMatrixMultiplication.h" />
-    <ClInclude Include="kernelSingleBlock.h" />
-    <ClInclude Include="kernelSingleThread.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="denseLUSolver.cpp" />
-    <ClCompile Include="denseLUSolverExample.cpp" />
+    <ClCompile Include="denseLUSolver.cu" />
+    <ClCompile Include="denseLUSolverExample.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
