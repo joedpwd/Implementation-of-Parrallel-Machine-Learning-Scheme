@@ -5,7 +5,7 @@
 //Function denseLUSolver has been adapted from the example from
 // the same resource.
 
-const int m = 3;
+const int m = 2;
 const int lda = m;
 const int ldb = m;
 
@@ -82,7 +82,7 @@ int denseLUSolver(double *hostA, double *hostB, double *hostX, double *LU, int *
 	assert(cudaSuccess == c1);
 	assert(cudaSuccess == c2);
 
-	/*Get the sizw of the workspace required and store it in lwork.
+	/*Get the size of the workspace required and store it in lwork.
 	Then allocate the workspace and store reference at dwork*/
 
 	status = cusolverDnDgetrf_bufferSize(
@@ -203,5 +203,6 @@ int denseLUSolver(double *hostA, double *hostB, double *hostX, double *LU, int *
 
 	if (cuSolver) cusolverDnDestroy(cuSolver);
 
-	cudaDeviceReset();
+	//Not
+	//cudaDeviceReset();
 }

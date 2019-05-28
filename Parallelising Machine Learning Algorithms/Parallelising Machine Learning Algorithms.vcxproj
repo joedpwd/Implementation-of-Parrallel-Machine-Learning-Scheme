@@ -79,7 +79,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <CudaCompile Include="kernelMatrixMultiplication.cu" />
-    <CudaCompile Include="main.cu" />
+    <CudaCompile Include="main.cu">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">--default-stream per-thread %(AdditionalOptions)</AdditionalOptions>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="denseLUSolverExample.h" />
@@ -88,8 +90,14 @@
     <ClInclude Include="kernelMatrixMultiplication.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="denseLUSolver.cu" />
-    <ClCompile Include="denseLUSolverExample.cu" />
+    <CudaCompile Include="denseLUSolver.cu">
+      <FileType>Document</FileType>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">--default-stream per-thread %(AdditionalOptions)</AdditionalOptions>
+    </CudaCompile>
+    <CudaCompile Include="denseLUSolverExample.cu">
+      <FileType>Document</FileType>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">--default-stream per-thread %(AdditionalOptions)</AdditionalOptions>
+    </CudaCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
