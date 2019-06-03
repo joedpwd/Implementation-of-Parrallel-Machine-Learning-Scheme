@@ -1,5 +1,7 @@
 #include "main.h"
 
+const int print = 1;
+
 int main(int argc, char **argv) {
 
 	//Used for Iteration
@@ -15,7 +17,7 @@ int main(int argc, char **argv) {
 
 	const int r = d + 2; //Assuming d = 2
 
-	const int h = 3; //Hyper parameter
+	const int h = 6; //Hyper parameter
 
 	const int m = d + 1; //Equivalent to d + 1
 
@@ -31,6 +33,7 @@ int main(int argc, char **argv) {
 	//std::thread *thArray = (std::thread *)malloc(sizeof(std::thread) * pow(r, h - 1));
 	std::vector<std::thread> thVect;
 
+	
 	//Read data in from CSV, data is stored in long long type and casted back into double type.
 	std::ifstream dataFile;
 	std::string t;
@@ -41,7 +44,7 @@ int main(int argc, char **argv) {
 	{
 		while (std::getline(dataFile, t))
 		{
-			std::cout << t << '\n';
+			//std::cout << t << '\n';
 			sz = 0;
 			for (j = 0; j < d; j++) {
 				*test = std::stoll(t.substr(sz), &sz);
@@ -51,7 +54,6 @@ int main(int argc, char **argv) {
 		}
 		dataFile.close();
 	}
-
 	else
 	{
 		std::cout << "Unable to open file";
@@ -59,9 +61,10 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
-	for (i = 0; i < rh * d; i++) {
+	
+	/*for (i = 0; i < rh * d; i++) {
 		printf("%.10f\n", *(data + i));
-	}
+	}*/
 
 
 	//Iterations of radon tree
@@ -83,6 +86,16 @@ int main(int argc, char **argv) {
 		}
 	}
 
+	
+	
+	if (print) {
+		for (i = 0; i < d; i++) {
+			printf("%.5f\n", *(data + i));
+		}
+	}
+
+	
+	
 	free(test);
 	free(data);
 }
@@ -148,7 +161,7 @@ void radonInstance(double *dataPoints, const int d) {
 			continue;
 	}
 
-	printf("RESULT\n");
+	//printf("RESULT\n");
 
 	/*for (i = 0; i < d; i++) {
 		printf("%.5f\n", hypothesis[i]);
@@ -157,7 +170,7 @@ void radonInstance(double *dataPoints, const int d) {
 	for (i = 0; i < d; i++) {
 		hypothesis[i] /= lambda;
 		//printf("%.5f\n", lambda);
-		printf("%.5f\n", hypothesis[i]);
+		//printf("%.5f\n", hypothesis[i]);
 		*(dataPoints + i) = hypothesis[i];
 	}
 

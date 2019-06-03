@@ -8,6 +8,7 @@
 const int m = 2;
 const int lda = m;
 const int ldb = m;
+const int print = 1;
 
 void printMatrix(int m, int n, const double*A, int lda, const char* name)
 {
@@ -41,8 +42,7 @@ int denseLUSolver(double *hostA, double *hostB, double *hostX, double *LU, int *
 	const int ldb = m;
 
 	const int pivot = 1; /*By default we will be using pivoting (pivot = 1)*/
-	const int print = 1; /*Print useful information, (taken from example, see above)*/
-	
+		
 	if (print)
 	{
 		printf("example of getrf \n");
@@ -150,9 +150,11 @@ int denseLUSolver(double *hostA, double *hostB, double *hostX, double *LU, int *
 			}
 		}
 	}
-	printf("L and U = (matlab base-1)\n");
-	printMatrix(m, m, LU, lda, "LU");
-	printf("=====\n");
+	if (print) {
+		printf("L and U = (matlab base-1)\n");
+		printMatrix(m, m, LU, lda, "LU");
+		printf("=====\n");
+	}
 
 	/* Using LU decomposition solve for x*/
 	if (pivot) {
@@ -188,11 +190,13 @@ int denseLUSolver(double *hostA, double *hostB, double *hostX, double *LU, int *
 	c1 = cudaMemcpy(hostX, d_B, sizeof(double)*m, cudaMemcpyDeviceToHost);
 	assert(cudaSuccess == c1);
 
-	printf("X = (matlab base-1)\n");
-	printMatrix(m, 1, hostX, ldb, "X");
-	printf("=====\n");
+	if (print) {
+		printf("X = (matlab base-1)\n");
+		printMatrix(m, 1, hostX, ldb, "X");
+		printf("=====\n");
 
-	printf("%d\n", info);
+		printf("%d\n", info);
+	}
 
 	/* free resources */
 	if (d_A) cudaFree(d_A);
