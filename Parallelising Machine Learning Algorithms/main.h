@@ -12,4 +12,4 @@
 #include <vector>
 
 int main(int argc, char **argv);
-void radonInstance(double *dataPoints, const int d);
+void startRadonMachine(double *dataPoints);

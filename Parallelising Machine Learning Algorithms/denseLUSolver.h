@@ -3,6 +3,7 @@
 #ifndef DENSE_LU_H
 #define DENSE_LU_H
 
+#include <cuda.h>
 #include <cuda_runtime.h>
 #include <cusolverDn.h>
 #include <device_launch_parameters.h>
@@ -13,6 +14,9 @@
 #include <cmath>
 
 //void printMatrix(int m, int n, const double*A, int lda, const char* name);
-int denseLUSolver(double *hostA, double *hostB, double *hostX, double *LU, int *Ipiv, int *info, int m);
+void radonInstance(double *data, int equations);
+__global__ void configureEquations(double *devData, double *devEquationData, int *devrh);
+__global__ void solveEquations(double *devData, double *devEquationData, int *devrh);
+__global__ void devMemoryCopy(double *src, double *dest, int len);
 
 #endif

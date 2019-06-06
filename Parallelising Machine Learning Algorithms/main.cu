@@ -2,26 +2,26 @@
 
 const int print = 1;
 
+//Get the dimensions of the data
+	//Set Valuues
+	//h will be a hyper parameter passed to the program.
+
+const int d = 2;
+
+const int r = d + 2; //Assuming d = 2
+
+const int h = 6; //Hyper parameter
+
+const int m = d + 1; //Equivalent to d + 1
+
+const int rh = pow(r, h);
+
 int main(int argc, char **argv) {
 
 	//Used for Iteration
 	int i=0;
 	int j=0;
 	int k=0;
-
-	//Get the dimensions of the data
-	//Set Valuues
-	//h will be a hyper parameter passed to the program.
-
-	const int d = 2;
-
-	const int r = d + 2; //Assuming d = 2
-
-	const int h = 6; //Hyper parameter
-
-	const int m = d + 1; //Equivalent to d + 1
-
-	const int rh = pow(r, h);
 
 	//Perform rh instances of ML problem
 
@@ -60,13 +60,12 @@ int main(int argc, char **argv) {
 
 		return 0;
 	}
-
 	
-	/*for (i = 0; i < rh * d; i++) {
-		printf("%.10f\n", *(data + i));
-	}*/
+	//Check the GPU capabilities
 
 
+
+	/*
 	//Iterations of radon tree
 	for (i = 0; i < h; i++) {
 		for (j = 0; j < pow(r, h-1 - i); j++) {
@@ -84,12 +83,18 @@ int main(int argc, char **argv) {
 			for(k=0;k<d;k++)
 				*(data + (j*d) + k) = *(data + (r*j*d) + k);
 		}
-	}
+	}*/
 
-	
+	if (print) {
+		for (i = 0; i < d* 12; i++) {
+			printf("%.5f\n", *(data + i));
+		}
+	}
+	printf("\n");
+	startRadonMachine(data);
 	
 	if (print) {
-		for (i = 0; i < d; i++) {
+		for (i = 0; i < d *12; i++) {
 			printf("%.5f\n", *(data + i));
 		}
 	}
@@ -100,9 +105,60 @@ int main(int argc, char **argv) {
 	free(data);
 }
 
-void radonInstance(double *dataPoints, const int d) {
+void startRadonMachine(double *dataPoints ) {
 
 	int i, j;
+	double *devData;
+	double *devEquationData;
+	int *devrh;
+	int maxThreads = 1;
+	int threads;
+	int noOfEquations;
+	int equationsPerThread;
+	std::vector<std::thread> thVect;
+
+	const dim3 blockSize(16, 16, 1);
+	const dim3 gridSize(1, 1, 1);
+
+
+	//Allocate A and B (A -> (m * m)), (B->1*m)) for r^h instances
+	cudaMalloc(&devEquationData, (sizeof(double) * m * (m + 1))*(rh/r));
+	cudaMalloc(&devData, sizeof(double) * rh * d);
+	cudaMemcpy(devData, dataPoints, sizeof(double) * rh * d, cudaMemcpyHostToDevice);
+
+	cudaMalloc(&devrh, sizeof(int));
+	
+
+	for (i = 0; i < 5; i++) {
+		noOfEquations = pow(r, h - 1 - i);
+		cudaMemcpy(devrh, &noOfEquations, sizeof(int), cudaMemcpyHostToDevice);
+		configureEquations << < gridSize, blockSize >> > (devData, devEquationData, devrh);
+
+		threads = (noOfEquations > maxThreads ? maxThreads : noOfEquations);
+		equationsPerThread = noOfEquations / threads;
+
+		for (j = 0; j < threads; j++) {
+			thVect.push_back(std::thread(radonInstance, (devEquationData + (j*equationsPerThread*m * (m + 1))), equationsPerThread));
+			//radonInstance((data + (d*j*r)), d);
+		}
+		for (std::thread & th : thVect)
+		{
+			// If thread Object is Joinable then Join that thread.
+			if (th.joinable())
+				th.join();
+		}
+		thVect.clear();
+
+		solveEquations << < gridSize, blockSize >> > (devData, devEquationData, devrh);
+		//Will sort memory out in thread
+		/*for (j = 0; j < pow(r, h-1 - i); j++) {
+			for(k=0;k<d;k++)
+				*(data + (j*d) + k) = *(data + (r*j*d) + k);
+		}*/
+	}
+
+	cudaMemcpy(dataPoints, devData, sizeof(double) * rh * d, cudaMemcpyDeviceToHost);
+	/*int i, j;
 
 	const int r = d + 2; //Assuming d = 2
 
@@ -134,12 +190,12 @@ void radonInstance(double *dataPoints, const int d) {
 	}
 
 	//Perform LU Factorisation
-	denseLUSolver(hostA, hostB, hostX, hostLU, hostIpiv, hostInfo, m);
+	denseLUSolver(hostA, hostB, hostX, hostLU, hostIpiv, hostInfo, m);*/
 
 	/*for (i = 0; i < m; i++)
 		printf("X\t%d\t%.4f\n", i, *(hostX+i));*/
 
-	double lambda = 1;
+	/*double lambda = 1;
 	double *hypothesis = (double *)malloc(sizeof(double)*d);
 
 	//Obtain correct hypothesis for instance. We have chosen to obtain the hypothesis by
@@ -163,9 +219,9 @@ void radonInstance(double *dataPoints, const int d) {
 
 	//printf("RESULT\n");
 
-	/*for (i = 0; i < d; i++) {
+	for (i = 0; i < d; i++) {
 		printf("%.5f\n", hypothesis[i]);
-	}*/
+	}
 	//printf("%.5f\n", lambda);
 	for (i = 0; i < d; i++) {
 		hypothesis[i] /= lambda;
@@ -196,13 +252,13 @@ void radonInstance(double *dataPoints, const int d) {
 		}
 	}*/
 
-	free(hostA);
+	/*free(hostA);
 	free(hostB);
 	free(hostX);
 	free(hostLU);
 	free(hostIpiv);
 	free(hostInfo);
-	free(hypothesis);
+	free(hypothesis);*/
 }
 
 /*double lambda = 0;
