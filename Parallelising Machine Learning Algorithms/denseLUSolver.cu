@@ -273,7 +273,7 @@ __global__ void solveEquations(double *devData, double *devEquationData, int *de
 	}
 	while (c < *devrh) {
 		curData = (devData + (c*r*d));
-		curEq = (devEquationData + (c*m * (m + 1)));
+		curEq = (devEquationData + (c*m ));
 		lambda = 1;
 		for (i = 0; i < d; i++)
 			hypothesis[i] = *(curData + i);
@@ -306,11 +306,18 @@ __global__ void solveEquations(double *devData, double *devEquationData, int *de
 	while (c < *devrh) {
 		for (i = 0; i < d; i++) {
 			*(devData + i + c * d) = *(devData + i + c * r * d);
-			if (c == 0) {
+			/*if (c == 0) {
 				printf("%.5f\n", *(devData + i + c * d));
-			}
+			}*/
 		}
 
 		c += blockDim.x * blockDim.y;
+	}
+
+	if (threadIdx.x + threadIdx.y*blockDim.x == 0) {
+		for (i = 0; i < *devrh*r*d; i++) {
+			printf("%.5f\n", *(devData + i));
+		}
+		printf("\n");
 	}
 }

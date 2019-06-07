@@ -150,8 +150,6 @@ void startRadonMachine(double *dataPoints ) {
 		}
 		thVect.clear();
 
-		if (i == h - 1)
-			printf("Colonel");
 		solveEquations << < gridSize, blockSize >> > (devData, devEquationData, devrh);
 		//Will sort memory out in thread
 		/*for (j = 0; j < pow(r, h-1 - i); j++) {
