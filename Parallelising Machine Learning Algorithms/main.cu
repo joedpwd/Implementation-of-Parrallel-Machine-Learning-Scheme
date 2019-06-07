@@ -10,7 +10,7 @@ const int d = 2;
 
 const int r = d + 2; //Assuming d = 2
 
-const int h = 2; //Hyper parameter
+const int h = 4; //Hyper parameter
 
 const int m = d + 1; //Equivalent to d + 1
 
