@@ -277,7 +277,6 @@ __global__ void solveEquations(double *devData, double *devEquationData, int *de
 		lambda = 1;
 		for (i = 0; i < d; i++)
 			hypothesis[i] = *(curData + i);
-		//printf("fuckyou\n", c);
 		for (i = 0; i < m; i++) {
 			if (*(curEq + i) >= 0) {
 				lambda += *(curEq + i);
