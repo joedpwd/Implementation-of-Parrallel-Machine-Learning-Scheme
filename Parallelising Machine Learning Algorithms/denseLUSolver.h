@@ -14,7 +14,7 @@
 #include <cmath>
 
 //void printMatrix(int m, int n, const double*A, int lda, const char* name);
-void radonInstance(double *data, int equations);
+void radonInstance(int threadId, double *data, int equations, double *solvedEquations);
 __global__ void configureEquations(double *devData, double *devEquationData, int *devrh);
 __global__ void solveEquations(double *devData, double *devEquationData, int *devrh);
 __global__ void devMemoryCopy(double *src, double *dest, int len);

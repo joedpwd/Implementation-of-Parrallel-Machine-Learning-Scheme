@@ -64,7 +64,7 @@ __global__ void configureEquations(double *devData, double *devEquationData, int
 	
 }
 
-void radonInstance(double *data, int equations)
+void radonInstance(int threadId, double *data, int equations, double *solvedEquations)
 {
 	/*double *hostA, double *hostB, double *hostX, double *LU, int *Ipiv, int *info, int m*/
 
@@ -234,7 +234,7 @@ void radonInstance(double *data, int equations)
 
 		//c1 = cudaMemcpy(hostX, d_B, sizeof(double)*m, cudaMemcpyDeviceToHost);
 		
-		devMemoryCopy<< <1, 1 >>> (d_B, (data + i*m), m);
+		devMemoryCopy<< <1, 1 >>> (d_B, (solvedEquations + (threadId*equations*m) + i*m) , m);
 	}
 
 	/* free resources */
@@ -267,13 +267,20 @@ __global__ void solveEquations(double *devData, double *devEquationData, int *de
 	double *curEq;
 	c = tid;
 
+	if (threadIdx.x + threadIdx.y*blockDim.x == 0) {
+		for (i = 0; i < *devrh*r*d; i++) {
+			printf("%.5f\n", *(devData + i));
+		}
+		printf("\n");
+	}
+
 	if (c == 0) {
 		printf("%d\n", c);
 		printf("%d\n", *devrh);
 	}
 	while (c < *devrh) {
 		curData = (devData + (c*r*d));
-		curEq = (devEquationData + (c*m ));
+		curEq = (devEquationData + (c*m));
 		lambda = 1;
 		for (i = 0; i < d; i++)
 			hypothesis[i] = *(curData + i);
@@ -283,7 +290,6 @@ __global__ void solveEquations(double *devData, double *devEquationData, int *de
 				for (j = 0; j < d; j++)
 					hypothesis[j] += *(curEq + i) * *(curData + ((i + 1) *d) + j);
 			}
-			
 		}
 		
 		for (i = 0; i < d; i++) {
@@ -295,12 +301,9 @@ __global__ void solveEquations(double *devData, double *devEquationData, int *de
 		
 	}
 
-	
+	c = tid;
 
 	__syncthreads();
-
-	c = threadIdx.x + threadIdx.y*blockDim.x;
-	
 	
 
 	while (c < *devrh) {

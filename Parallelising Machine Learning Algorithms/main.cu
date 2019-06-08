@@ -10,7 +10,7 @@ const int d = 2;
 
 const int r = d + 2; //Assuming d = 2
 
-const int h = 4; //Hyper parameter
+const int h = 3; //Hyper parameter
 
 const int m = d + 1; //Equivalent to d + 1
 
@@ -110,6 +110,7 @@ void startRadonMachine(double *dataPoints ) {
 	int i, j;
 	double *devData;
 	double *devEquationData;
+	double *devSolvedEquations;
 	int *devrh;
 	int maxThreads = 1;
 	int threads;
@@ -123,6 +124,7 @@ void startRadonMachine(double *dataPoints ) {
 
 	//Allocate A and B (A -> (m * m)), (B->1*m)) for r^h instances
 	cudaMalloc(&devEquationData, (sizeof(double) * m * (m + 1))*(rh/r));
+	cudaMalloc(&devSolvedEquations, (sizeof(double) * m)*(rh / r));
 	cudaMalloc(&devData, sizeof(double) * rh * d);
 	cudaMemcpy(devData, dataPoints, sizeof(double) * rh * d, cudaMemcpyHostToDevice);
 
@@ -139,7 +141,7 @@ void startRadonMachine(double *dataPoints ) {
 		printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
 
 		for (j = 0; j < threads; j++) {
-			thVect.push_back(std::thread(radonInstance, (devEquationData + (j*equationsPerThread*m * (m + 1))), equationsPerThread));
+			thVect.push_back(std::thread(radonInstance, j, (devEquationData + (j*equationsPerThread*m * (m + 1))), equationsPerThread, devSolvedEquations));
 			//radonInstance((data + (d*j*r)), d);
 		}
 		for (std::thread & th : thVect)
@@ -150,7 +152,7 @@ void startRadonMachine(double *dataPoints ) {
 		}
 		thVect.clear();
 
-		solveEquations << < gridSize, blockSize >> > (devData, devEquationData, devrh);
+		solveEquations << < gridSize, blockSize >> > (devData, devSolvedEquations, devrh);
 		//Will sort memory out in thread
 		/*for (j = 0; j < pow(r, h-1 - i); j++) {
 			for(k=0;k<d;k++)
