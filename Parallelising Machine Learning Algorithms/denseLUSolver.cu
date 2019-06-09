@@ -8,7 +8,7 @@
 const int m = 3;
 const int lda = m;
 const int ldb = m;
-const int print = 1;
+const int print = 0;
 const int d = 2;
 const int r = d+2;
 
@@ -69,6 +69,7 @@ void radonInstance(int threadId, double *data, int equations, double *solvedEqua
 	/*double *hostA, double *hostB, double *hostX, double *LU, int *Ipiv, int *info, int m*/
 
 	cusolverDnHandle_t cuSolver = NULL;	/*Will be passed to function that will initialise library and allocate resources*/
+	cudaStream_t stream = NULL;
 	cusolverStatus_t status = CUSOLVER_STATUS_SUCCESS;	/*Stores Error value for cusolver function calls*/
 
 	/*Used to handle generic cuda errors*/
@@ -91,6 +92,12 @@ void radonInstance(int threadId, double *data, int equations, double *solvedEqua
 
 	/* Initialise cuSolver*/
 	status = cusolverDnCreate(&cuSolver);
+	assert(CUSOLVER_STATUS_SUCCESS == status);
+
+	c1 = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+	assert(cudaSuccess == c1);
+
+	status = cusolverDnSetStream(cuSolver, stream);
 	assert(CUSOLVER_STATUS_SUCCESS == status);
 
 	/*Allocate resources on device and copy A and B to device*/
@@ -245,6 +252,7 @@ void radonInstance(int threadId, double *data, int equations, double *solvedEqua
 	if (d_work) cudaFree(d_work);
 
 	if (cuSolver) cusolverDnDestroy(cuSolver);
+	if (stream) cudaStreamDestroy(stream);
 
 	//Not
 	//cudaDeviceReset();
@@ -267,7 +275,7 @@ __global__ void solveEquations(double *devData, double *devEquationData, int *de
 	double *curEq;
 	c = tid;
 
-	if (threadIdx.x + threadIdx.y*blockDim.x == 0) {
+	/*if (threadIdx.x + threadIdx.y*blockDim.x == 0) {
 		for (i = 0; i < *devrh*r*d; i++) {
 			printf("%.5f\n", *(devData + i));
 		}
@@ -277,7 +285,7 @@ __global__ void solveEquations(double *devData, double *devEquationData, int *de
 	if (c == 0) {
 		printf("%d\n", c);
 		printf("%d\n", *devrh);
-	}
+	}*/
 	while (c < *devrh) {
 		curData = (devData + (c*r*d));
 		curEq = (devEquationData + (c*m));
@@ -317,10 +325,10 @@ __global__ void solveEquations(double *devData, double *devEquationData, int *de
 		c += blockDim.x * blockDim.y;
 	}
 
-	if (threadIdx.x + threadIdx.y*blockDim.x == 0) {
+	/*if (threadIdx.x + threadIdx.y*blockDim.x == 0) {
 		for (i = 0; i < *devrh*r*d; i++) {
 			printf("%.5f\n", *(devData + i));
 		}
 		printf("\n");
-	}
+	}*/
 }

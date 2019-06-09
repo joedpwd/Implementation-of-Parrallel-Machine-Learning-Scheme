@@ -1,6 +1,6 @@
 #include "main.h"
 
-const int print = 1;
+const int print = 0;
 
 //Get the dimensions of the data
 	//Set Valuues
@@ -65,40 +65,25 @@ int main(int argc, char **argv) {
 
 
 
-	/*
-	//Iterations of radon tree
-	for (i = 0; i < h; i++) {
-		for (j = 0; j < pow(r, h-1 - i); j++) {
-			thVect.push_back(std::thread(radonInstance, (data + (d*j*r)), d));
-			//radonInstance((data + (d*j*r)), d);
-		}
-		for (std::thread & th : thVect)
-		{
-			// If thread Object is Joinable then Join that thread.
-			if (th.joinable())
-				th.join();
-		}
-		thVect.clear();
-		for (j = 0; j < pow(r, h-1 - i); j++) {
-			for(k=0;k<d;k++)
-				*(data + (j*d) + k) = *(data + (r*j*d) + k);
-		}
-	}*/
-
-	if (print) {
+	if (print == 1) {
 		for (i = 0; i < d* 4; i++) {
 			printf("%.5f\n", *(data + i));
 		}
+		printf("\n");
 	}
-	printf("\n");
-	startRadonMachine(data);
 	
-	if (print) {
+	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+	startRadonMachine(data);
+	high_resolution_clock::time_point t2 = high_resolution_clock::now();
+	if (print == 1) {
 		for (i = 0; i < d *4; i++) {
 			printf("%.5f\n", *(data + i));
 		}
+		printf("\n");
 	}
+	auto duration = duration_cast<microseconds>(t2 - t1).count();
 
+	std::cout << duration << " microseconds";
 	
 	
 	free(test);
@@ -138,7 +123,7 @@ void startRadonMachine(double *dataPoints ) {
 
 		threads = (noOfEquations > maxThreads ? maxThreads : noOfEquations);
 		equationsPerThread = noOfEquations / threads;
-		printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
+		//printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
 
 		for (j = 0; j < threads; j++) {
 			thVect.push_back(std::thread(radonInstance, j, (devEquationData + (j*equationsPerThread*m * (m + 1))), equationsPerThread, devSolvedEquations));

@@ -10,6 +10,9 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <chrono>
+
+using namespace std::chrono;
 
 int main(int argc, char **argv);
 void startRadonMachine(double *dataPoints);
