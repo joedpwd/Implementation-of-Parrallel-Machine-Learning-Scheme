@@ -1,6 +1,6 @@
 #include "main.h"
 
-const int print = 0;
+const int print = 1;
 
 //Get the dimensions of the data
 	//Set Valuues
@@ -106,6 +106,12 @@ void startRadonMachine(double *dataPoints ) {
 	const dim3 blockSize(16, 16, 1);
 	const dim3 gridSize(1, 1, 1);
 
+	cusolverDnHandle_t cuSolver = NULL;
+	cusolverStatus_t status = CUSOLVER_STATUS_SUCCESS;
+
+	/* Initialise cuSolver*/
+	status = cusolverDnCreate(&cuSolver);
+	assert(CUSOLVER_STATUS_SUCCESS == status);
 
 	//Allocate A and B (A -> (m * m)), (B->1*m)) for r^h instances
 	cudaMalloc(&devEquationData, (sizeof(double) * m * (m + 1))*(rh/r));
@@ -123,10 +129,10 @@ void startRadonMachine(double *dataPoints ) {
 
 		threads = (noOfEquations > maxThreads ? maxThreads : noOfEquations);
 		equationsPerThread = noOfEquations / threads;
-		//printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
+		printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
 
 		for (j = 0; j < threads; j++) {
-			thVect.push_back(std::thread(radonInstance, j, (devEquationData + (j*equationsPerThread*m * (m + 1))), equationsPerThread, devSolvedEquations));
+			thVect.push_back(std::thread(radonInstance, cuSolver, j, (devEquationData + (j*equationsPerThread*m * (m + 1))), equationsPerThread, devSolvedEquations));
 			//radonInstance((data + (d*j*r)), d);
 		}
 		for (std::thread & th : thVect)
@@ -146,6 +152,8 @@ void startRadonMachine(double *dataPoints ) {
 	}
 
 	cudaMemcpy(dataPoints, devData, sizeof(double) * rh * d, cudaMemcpyDeviceToHost);
+	
+	if (cuSolver) cusolverDnDestroy(cuSolver);
 	/*int i, j;
 
 	const int r = d + 2; //Assuming d = 2
@@ -247,6 +255,144 @@ void startRadonMachine(double *dataPoints ) {
 	free(hostIpiv);
 	free(hostInfo);
 	free(hypothesis);*/
+}
+
+void radonInstance(cusolverDnHandle_t cuSolver, int threadId, double *data, int equations, double *solvedEquations)
+{
+	/*double *hostA, double *hostB, double *hostX, double *LU, int *Ipiv, int *info, int m*/
+
+	cudaStream_t stream = NULL;
+	cusolverStatus_t status = CUSOLVER_STATUS_SUCCESS;	/*Stores Error value for cusolver function calls*/
+
+	/*Used to handle generic cuda errors*/
+	cudaError_t c1 = cudaSuccess;
+	cudaError_t c2 = cudaSuccess;
+
+	double *d_A = NULL; /* device copy of A */
+	double *d_B = NULL; /* device copy of B */
+	int *d_Ipiv = NULL; /* pivoting sequence */
+	int *d_info = NULL; /* error info for cuSolverDn */
+	int  lwork = 0;     /* size of workspace for suSolverDn */
+	double *d_work = NULL; /* device workspace for getrf, will be allocated using lwork */
+
+	const int lda = m;
+	const int ldb = m;
+
+	const int pivot = 1; /*By default we will be using pivoting (pivot = 1)*/
+
+	c1 = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+	assert(cudaSuccess == c1);
+
+	c1 = cudaMalloc((void**)&d_Ipiv, sizeof(int) * m);
+	c2 = cudaMalloc((void**)&d_info, sizeof(int));
+	assert(cudaSuccess == c1);
+	assert(cudaSuccess == c2);
+
+	mtx.lock();
+	status = cusolverDnSetStream(cuSolver, stream);
+	c1 = cudaDeviceSynchronize();//c1 = cudaStreamSynchronize(stream);
+	assert(cudaSuccess == c1);
+	assert(CUSOLVER_STATUS_SUCCESS == status);
+	status = cusolverDnDgetrf_bufferSize(
+		cuSolver,
+		m,
+		m,
+		d_A,
+		lda,
+		&lwork);
+	assert(CUSOLVER_STATUS_SUCCESS == status);
+	//mtx.unlock();
+
+	c1 = cudaMalloc((void**)&d_work, sizeof(double)*lwork);
+	assert(cudaSuccess == c1);
+
+	/* Perform LU Factorisation*/
+
+	for (int i = 0; i < equations; i++) {
+
+		d_A = (data + (i*m * (m + 1)));
+		d_B = (data + (m*m) + (i*m * (m + 1)));
+		c1 = cudaDeviceSynchronize();//c1 = cudaStreamSynchronize(stream);
+		assert(cudaSuccess == c1);
+		//printM<< <1, 1 >> > (m,m, d_A,"A");
+		//printM << <1, 1 >> > (m, m, d_B, "B");
+		if (pivot) {
+			status = cusolverDnDgetrf(
+				cuSolver,
+				m,
+				m,
+				d_A,
+				lda,
+				d_work,
+				d_Ipiv,
+				d_info);
+		}
+		else {
+			status = cusolverDnDgetrf(
+				cuSolver,
+				m,
+				m,
+				d_A,
+				lda,
+				d_work,
+				NULL,
+				d_info);
+		}
+		/* Wait until device has finished */
+		c1 = cudaDeviceSynchronize();//c1 = cudaStreamSynchronize(stream);
+		assert(CUSOLVER_STATUS_SUCCESS == status);
+		assert(cudaSuccess == c1);
+
+		if (pivot) {
+			status = cusolverDnDgetrs(
+				cuSolver,
+				CUBLAS_OP_N,
+				m,
+				1, /* nrhs */
+				d_A,
+				lda,
+				d_Ipiv,
+				d_B,
+				ldb,
+				d_info);
+		}
+		else {
+			status = cusolverDnDgetrs(
+				cuSolver,
+				CUBLAS_OP_N,
+				m,
+				1, /* nrhs */
+				d_A,
+				lda,
+				NULL,
+				d_B,
+				ldb,
+				d_info);
+		}
+	
+		c1 = cudaDeviceSynchronize();// cudaStreamSynchronize(stream);
+		assert(CUSOLVER_STATUS_SUCCESS == status);
+		assert(cudaSuccess == c1);
+		//c1 = cudaMemcpy(hostX, d_B, sizeof(double)*m, cudaMemcpyDeviceToHost);
+
+		devMemoryCopy << <1, 1 >> > (d_B, (solvedEquations + (threadId*equations*m) + i * m), m);
+	}
+
+	mtx.unlock();
+
+	/* free resources */
+	if (d_A) cudaFree(d_A);
+	if (d_B) cudaFree(d_B);
+	if (d_Ipiv) cudaFree(d_Ipiv);
+	if (d_info) cudaFree(d_info);
+	if (d_work) cudaFree(d_work);
+
+
+	if (stream) cudaStreamDestroy(stream);
+
+	//Not
+	//cudaDeviceReset();
+
 }
 
 /*double lambda = 0;

@@ -13,8 +13,8 @@
 #include <cassert>
 #include <cmath>
 
-//void printMatrix(int m, int n, const double*A, int lda, const char* name);
-void radonInstance(int threadId, double *data, int equations, double *solvedEquations);
+__device__ void printMatrix(int m, int n, const double*A, int lda, const char* name);
+__global__ void printM(int m, int n, const double*A, const char* name);
 __global__ void configureEquations(double *devData, double *devEquationData, int *devrh);
 __global__ void solveEquations(double *devData, double *devEquationData, int *devrh);
 __global__ void devMemoryCopy(double *src, double *dest, int len);
