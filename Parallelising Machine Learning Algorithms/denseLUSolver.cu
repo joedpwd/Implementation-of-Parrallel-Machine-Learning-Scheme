@@ -36,9 +36,9 @@ __global__ void configureEquations(double *devData, double *devEquationData, int
 	int c, j, i;
 	double A[m*m];
 	double B[m];
-	c = (*devrh) - tid - 1;
-
-	while (c >= 0) {
+	//c = (*devrh) - tid - 1;
+	c = tid;
+	/*while (c >= 0) {
 		for (j = 0; j < d; j++) {
 			B[j] = -*(devData + j + (c*r*d));
 		}
@@ -65,12 +65,36 @@ __global__ void configureEquations(double *devData, double *devEquationData, int
 			printf("%d\n", c);
 			printMatrix(m, m, A, m, "A");
 			printMatrix(m, m, (devData + (c*m * (m + 1))), m, "A");
-		}*/
+		}
 		
 		c -= blockDim.x * blockDim.y;
-	}
-
+	}*/
+	while(c < *devrh) {
 	
+		for (j = 0; j < d; j++) {
+			B[j] = -*(devData + j + (c*r*d));
+		}
+
+		B[j] = -1;
+
+		for (i = 1; i < r; i++) {
+			for (j = 0; j < d; j++) {
+				A[(i - 1)*m + j] = *(devData + (i*d) + j + (c*r*d));
+			}
+			A[(i - 1)*m + j] = 1;
+		}
+
+		__syncthreads();
+
+		for (i = 0; i < m*m; i++) {
+			*(devEquationData + i + (c*m * (m + 1))) = A[i];
+		}
+		for (i = 0; i < m; i++) {
+			*(devEquationData + i + (m*m) + (c*m * (m + 1))) = B[i];
+		}
+
+		c += blockDim.x * blockDim.y;
+	}
 }
 
 __global__ void devMemoryCopy(double *src, double *dest, int len) {

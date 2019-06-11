@@ -96,8 +96,8 @@ void startRadonMachine(double *dataPoints ) {
 	double *devData;
 	double *devEquationData;
 	double *devSolvedEquations;
-	int *devrh;
-	int maxThreads = 1;
+	int *devNofEquation;
+	int maxThreads = 4;
 	int threads;
 	int noOfEquations;
 	int equationsPerThread;
@@ -119,13 +119,13 @@ void startRadonMachine(double *dataPoints ) {
 	cudaMalloc(&devData, sizeof(double) * rh * d);
 	cudaMemcpy(devData, dataPoints, sizeof(double) * rh * d, cudaMemcpyHostToDevice);
 
-	cudaMalloc(&devrh, sizeof(int));
+	cudaMalloc(&devNofEquation, sizeof(int));
 	
 
 	for (i = 0; i < h; i++) {
 		noOfEquations = pow(r, h - 1 - i);
-		cudaMemcpy(devrh, &noOfEquations, sizeof(int), cudaMemcpyHostToDevice);
-		configureEquations << < gridSize, blockSize >> > (devData, devEquationData, devrh);
+		cudaMemcpy(devNofEquation, &noOfEquations, sizeof(int), cudaMemcpyHostToDevice);
+		configureEquations << < gridSize, blockSize >> > (devData, devEquationData, devNofEquation);
 
 		threads = (noOfEquations > maxThreads ? maxThreads : noOfEquations);
 		equationsPerThread = noOfEquations / threads;
@@ -143,7 +143,7 @@ void startRadonMachine(double *dataPoints ) {
 		}
 		thVect.clear();
 
-		solveEquations << < gridSize, blockSize >> > (devData, devSolvedEquations, devrh);
+		solveEquations << < gridSize, blockSize >> > (devData, devSolvedEquations, devNofEquation);
 		//Will sort memory out in thread
 		/*for (j = 0; j < pow(r, h-1 - i); j++) {
 			for(k=0;k<d;k++)
@@ -290,8 +290,9 @@ void radonInstance(cusolverDnHandle_t cuSolver, int threadId, double *data, int 
 
 	mtx.lock();
 	status = cusolverDnSetStream(cuSolver, stream);
-	c1 = cudaDeviceSynchronize();//c1 = cudaStreamSynchronize(stream);
-	assert(cudaSuccess == c1);
+	//c1 = cudaDeviceSynchronize();
+	//c1 = cudaStreamSynchronize(stream);
+	//assert(cudaSuccess == c1);
 	assert(CUSOLVER_STATUS_SUCCESS == status);
 	status = cusolverDnDgetrf_bufferSize(
 		cuSolver,
@@ -312,7 +313,8 @@ void radonInstance(cusolverDnHandle_t cuSolver, int threadId, double *data, int 
 
 		d_A = (data + (i*m * (m + 1)));
 		d_B = (data + (m*m) + (i*m * (m + 1)));
-		c1 = cudaDeviceSynchronize();//c1 = cudaStreamSynchronize(stream);
+		//c1 = cudaDeviceSynchronize();
+		c1 = cudaStreamSynchronize(stream);
 		assert(cudaSuccess == c1);
 		//printM<< <1, 1 >> > (m,m, d_A,"A");
 		//printM << <1, 1 >> > (m, m, d_B, "B");
@@ -339,7 +341,8 @@ void radonInstance(cusolverDnHandle_t cuSolver, int threadId, double *data, int 
 				d_info);
 		}
 		/* Wait until device has finished */
-		c1 = cudaDeviceSynchronize();//c1 = cudaStreamSynchronize(stream);
+		//c1 = cudaDeviceSynchronize();
+		c1 = cudaStreamSynchronize(stream);
 		assert(CUSOLVER_STATUS_SUCCESS == status);
 		assert(cudaSuccess == c1);
 
@@ -370,7 +373,8 @@ void radonInstance(cusolverDnHandle_t cuSolver, int threadId, double *data, int 
 				d_info);
 		}
 	
-		c1 = cudaDeviceSynchronize();// cudaStreamSynchronize(stream);
+		//c1 = cudaDeviceSynchronize();
+		c1 = cudaStreamSynchronize(stream);
 		assert(CUSOLVER_STATUS_SUCCESS == status);
 		assert(cudaSuccess == c1);
 		//c1 = cudaMemcpy(hostX, d_B, sizeof(double)*m, cudaMemcpyDeviceToHost);
