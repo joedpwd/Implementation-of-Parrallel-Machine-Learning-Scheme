@@ -33,7 +33,9 @@ __global__ void printM(int m, int n, const double*A, const char* name)
 }
 
 __global__ void configureEquations(double *devData, double *devEquationData, int *devrh) {
-	int tid = threadIdx.x + threadIdx.y*blockDim.x;
+	int a = blockIdx.x * blockDim.x + threadIdx.x;
+	int b = blockIdx.y * blockDim.y + threadIdx.y;
+	int tid = a + b * (gridDim.x * blockDim.x);
 	int c, j, i;
 	double A[m*m];
 	double B[m];
@@ -62,7 +64,7 @@ __global__ void configureEquations(double *devData, double *devEquationData, int
 			*(devEquationData + i + (m*m) + (c*m * (m + 1))) = B[i];
 		}
 
-		c += blockDim.x * blockDim.y;
+		c += blockDim.x * blockDim.y * gridDim.x * gridDim.y;
 	}
 }
 
@@ -78,7 +80,9 @@ __global__ void devMemoryCopy(double *src, double *dest, int len) {
 }
 
 __global__ void solveEquations(double *devData, double *devEquationData, int *devrh) {
-	int tid = threadIdx.x + threadIdx.y*blockDim.x;
+	int a = blockIdx.x * blockDim.x + threadIdx.x;
+	int b = blockIdx.y * blockDim.y + threadIdx.y;
+	int tid = a + b * (gridDim.x * blockDim.x);
 	int c, j, i;
 	double lambda;
 	double hypothesis[d];
@@ -106,7 +110,7 @@ __global__ void solveEquations(double *devData, double *devEquationData, int *de
 			*(curData + i) = hypothesis[i];
 		}
 
-		c+= blockDim.x * blockDim.y;
+		c += blockDim.x * blockDim.y * gridDim.x * gridDim.y;
 		
 	}
 
@@ -123,7 +127,7 @@ __global__ void solveEquations(double *devData, double *devEquationData, int *de
 			}*/
 		}
 
-		c += blockDim.x * blockDim.y;
+		c += blockDim.x * blockDim.y * gridDim.x * gridDim.y;
 	}
 
 
