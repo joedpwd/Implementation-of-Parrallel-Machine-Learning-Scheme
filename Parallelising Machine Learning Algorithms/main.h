@@ -19,4 +19,4 @@ std::mutex mtx;
 
 int main(int argc, char **argv);
 void startRadonMachine(double *dataPoints);
-void radonInstance(cusolverDnHandle_t cuSolver, int threadId, double *data, int equations, double *solvedEquations);
+void radonInstance(cusolverDnHandle_t cuSolver, int threadId, double *data, int equations, double *solvedEquations, cudaStream_t *s);
