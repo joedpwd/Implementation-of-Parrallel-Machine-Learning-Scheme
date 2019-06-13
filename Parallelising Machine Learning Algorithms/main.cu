@@ -10,7 +10,7 @@ const int d = 2;
 
 const int r = d + 2; //Assuming d = 2
 
-const int h = 6; //Hyper parameter
+const int h = 8; //Hyper parameter
 
 const int m = d + 1; //Equivalent to d + 1
 
@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
 	std::string t;
 	std::string::size_type sz;
 
-	dataFile.open("C:/Users/jxd45/Documents/Python Scripts/csvtest.csv");
+	dataFile.open("C:/Users/jxd45/Documents/Python Scripts/smallsmall.csv");
 	long long *test = (long long *)malloc(sizeof(long long));
 	if (dataFile.is_open())
 	{
