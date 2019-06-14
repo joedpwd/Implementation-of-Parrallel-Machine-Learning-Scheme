@@ -17,6 +17,6 @@ using namespace std::chrono;
 
 std::mutex mtx;
 
-int main(int argc, char **argv);
-void startRadonMachine(double *dataPoints);
-void radonInstance(cusolverDnHandle_t cuSolver, int threadId, double *data, int equations, double *solvedEquations, cudaStream_t *s);
+int main(int argc, char *argv[]);
+void startRadonMachine(int d, int h, double *dataPoints);
+void radonInstance(int d ,cusolverDnHandle_t cuSolver, int threadId, double *data, int equations, double *solvedEquations, cudaStream_t *s);

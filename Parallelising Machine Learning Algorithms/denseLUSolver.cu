@@ -32,13 +32,18 @@ __global__ void printM(int m, int n, const double*A, const char* name)
 	printf("\n");
 }
 
-__global__ void configureEquations(double *devData, double *devEquationData, int *devrh) {
+__global__ void configureEquations(int d, double *devData, double *devEquationData, int *devrh) {
+	
+	int r = d + 2;
+	int m = d + 1;
+
 	int a = blockIdx.x * blockDim.x + threadIdx.x;
 	int b = blockIdx.y * blockDim.y + threadIdx.y;
 	int tid = a + b * (gridDim.x * blockDim.x);
 	int c, j, i;
-	double A[m*m];
-	double B[m];
+
+	double *A = (double*)malloc(m*m * sizeof(double));
+	double *B = (double*)malloc(m * sizeof(double));
 	c = tid;
 	while(c < *devrh) {
 	
@@ -66,9 +71,11 @@ __global__ void configureEquations(double *devData, double *devEquationData, int
 
 		c += blockDim.x * blockDim.y * gridDim.x * gridDim.y;
 	}
+	free(A);
+	free(B);
 }
 
-__global__ void devMemoryCopy(double *src, double *dest, int len) {
+__global__ void devMemoryCopy(int m, double *src, double *dest, int len) {
 	if (print) {
 		printf("B = (matlab base-1)\n");
 		printMatrix(m, 1, src, m, "X");
@@ -79,13 +86,16 @@ __global__ void devMemoryCopy(double *src, double *dest, int len) {
 	}
 }
 
-__global__ void solveEquations(double *devData, double *devEquationData, int *devrh) {
+__global__ void solveEquations(int d, double *devData, double *devEquationData, int *devrh) {
+	int r = d + 2;
+	int m = d + 1;
+	
 	int a = blockIdx.x * blockDim.x + threadIdx.x;
 	int b = blockIdx.y * blockDim.y + threadIdx.y;
 	int tid = a + b * (gridDim.x * blockDim.x);
 	int c, j, i;
 	double lambda;
-	double hypothesis[d];
+	double *hypothesis = (double*)malloc(d*sizeof(double));
 
 	double *curData;
 	double *curEq;
@@ -138,4 +148,5 @@ __global__ void solveEquations(double *devData, double *devEquationData, int *de
 		}
 		printf("\n");
 	}*/
+	free(hypothesis);
 }

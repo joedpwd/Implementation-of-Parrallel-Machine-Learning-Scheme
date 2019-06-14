@@ -6,17 +6,38 @@ const int print = 1;
 	//Set Valuues
 	//h will be a hyper parameter passed to the program.
 
-const int d = 12;
+/*const int d = 12;
 
-const int r = d + 2; //Assuming d = 2
+const int r = d + 2;
 
-const int h = 3; //Hyper parameter
+const int h = 5; //Hyper parameter
 
 const int m = d + 1; //Equivalent to d + 1
 
-const int rh = pow(r, h);
+const int rh = pow(r, h);*/
 
-int main(int argc, char **argv) {
+//"C:\Users\jxd45\Documents\Python Scripts\big.csv"
+
+int main(int argc, char *argv[]) {
+
+	int d;
+	int h;
+	std::string inputFile;
+
+	//printf("%d", argc);
+
+	//if (argc == 4) {
+		for(int i=0; i < argc; i++)
+			std::cout << argv[i] << std::endl;
+
+		inputFile = argv[1];
+		d = atoi(argv[2]);
+		h = atoi(argv[3]); //Hyper parameter
+	//}
+
+	int m = d + 1; //Equivalent to d + 1
+	int r = d + 2; //Radon number
+	int rh = pow(r, h);
 
 	//Used for Iteration
 	int i=0;
@@ -36,7 +57,7 @@ int main(int argc, char **argv) {
 	std::string t;
 	std::string::size_type sz;
 
-	dataFile.open("C:/Users/jxd45/Documents/Python Scripts/bigsmall.csv");
+	dataFile.open(inputFile); 
 	long long *test = (long long *)malloc(sizeof(long long));
 	if (dataFile.is_open())
 	{
@@ -73,7 +94,7 @@ int main(int argc, char **argv) {
 	
 	//Start timer
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
-	startRadonMachine(data);
+	startRadonMachine(d,h,data);
 	//End Timers
 	high_resolution_clock::time_point t2 = high_resolution_clock::now();
 	
@@ -93,14 +114,18 @@ int main(int argc, char **argv) {
 	free(data);
 }
 
-void startRadonMachine(double *dataPoints ) {
+void startRadonMachine(int d, int h, double *dataPoints ) {
+
+	int m = d + 1;
+	int r = d + 2;
+	int rh = pow(r, h);
 
 	int i, j;
 	double *devData;
 	double *devEquationData;
 	double *devSolvedEquations;
 	int *devNofEquation;
-	int maxThreads = 16;
+	int maxThreads = 14;
 	int threads;
 	int noOfEquations;
 	int equationsPerThread;
@@ -141,15 +166,15 @@ void startRadonMachine(double *dataPoints ) {
 	for (i = 0; i < h; i++) {
 		noOfEquations = pow(r, h - 1 - i);
 		cudaMemcpy(devNofEquation, &noOfEquations, sizeof(int), cudaMemcpyHostToDevice);
-		configureEquations << < gridSize, blockSize >> > (devData, devEquationData, devNofEquation);
+		configureEquations << < gridSize, blockSize >> > (d, devData, devEquationData, devNofEquation);
 		cudaDeviceSynchronize();
 		threads = (noOfEquations > maxThreads ? maxThreads : noOfEquations);
 		equationsPerThread = noOfEquations / threads;
 		
-		//printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
+		printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
 		
 		for (j = 0; j < threads; j++) {
-			thVect.push_back(std::thread(radonInstance, cuSolver, j, (devEquationData + (j*equationsPerThread*m * (m + 1))), equationsPerThread, devSolvedEquations, streams + j));
+			thVect.push_back(std::thread(radonInstance,d, cuSolver, j, (devEquationData + (j*equationsPerThread*m * (m + 1))), equationsPerThread, devSolvedEquations, streams + j));
 		}
 		for (std::thread & th : thVect)
 		{
@@ -158,9 +183,9 @@ void startRadonMachine(double *dataPoints ) {
 		}
 		thVect.clear();
 
-		solveEquations << < gridSize, blockSize >> > (devData, devSolvedEquations, devNofEquation);
-		printM << <1, 1, 0>> > (10, 1, devData, "A");
+		solveEquations << < gridSize, blockSize >> > (d, devData, devSolvedEquations, devNofEquation);
 		cudaDeviceSynchronize();
+		printM << <1, 1, 0 >> > (40, 1, devData, "A");
 	}
 
 	cudaMemcpy(dataPoints, devData, sizeof(double) * rh * d, cudaMemcpyDeviceToHost);
@@ -183,9 +208,10 @@ void startRadonMachine(double *dataPoints ) {
 
 }
 
-void radonInstance(cusolverDnHandle_t cuSolver, int threadId, double *data, int equations, double *solvedEquations, cudaStream_t *s)
+void radonInstance(int d, cusolverDnHandle_t cuSolver, int threadId, double *data, int equations, double *solvedEquations, cudaStream_t *s)
 {
 	mtx.lock();
+	int m = d + 1;
 	cusolverStatus_t status = CUSOLVER_STATUS_SUCCESS;	/*Stores Error value for cusolver function calls*/
 
 	/*Used to handle generic cuda errors*/
@@ -288,7 +314,7 @@ void radonInstance(cusolverDnHandle_t cuSolver, int threadId, double *data, int 
 	
 		assert(CUSOLVER_STATUS_SUCCESS == status);
 		cudaStreamSynchronize(*s);
-		devMemoryCopy << <1, 1, 0, *s >> > (d_B, (solvedEquations + (threadId*equations*m) + i * m), m);
+		devMemoryCopy << <1, 1, 0, *s >> > (m, d_B, (solvedEquations + (threadId*equations*m) + i * m), m);
 		cudaStreamSynchronize(*s);
 	}
 
