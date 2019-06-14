@@ -171,7 +171,7 @@ void startRadonMachine(int d, int h, double *dataPoints ) {
 		threads = (noOfEquations > maxThreads ? maxThreads : noOfEquations);
 		equationsPerThread = noOfEquations / threads;
 		
-		printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
+		//printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
 		
 		for (j = 0; j < threads; j++) {
 			thVect.push_back(std::thread(radonInstance,d, cuSolver, j, (devEquationData + (j*equationsPerThread*m * (m + 1))), equationsPerThread, devSolvedEquations, streams + j));
