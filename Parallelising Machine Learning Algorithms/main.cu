@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
 
 	//Debugging Purposes
 	if (print == 1) {
-		for (i = 0; i < d* 4; i++) {
+		for (i = 0; i < d+4; i++) {
 			printf("%.5f\n", *(data + i));
 		}
 		printf("\n");
@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
 	high_resolution_clock::time_point t2 = high_resolution_clock::now();
 	
 	if (print == 1) {
-		for (i = 0; i < d *4; i++) {
+		for (i = 0; i < d+4; i++) {
 			printf("%.5f\n", *(data + i));
 		}
 		printf("\n");
@@ -146,7 +146,7 @@ void startRadonMachine(double *dataPoints ) {
 		threads = (noOfEquations > maxThreads ? maxThreads : noOfEquations);
 		equationsPerThread = noOfEquations / threads;
 		
-		//printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
+		printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
 		
 		for (j = 0; j < threads; j++) {
 			thVect.push_back(std::thread(radonInstance, cuSolver, j, (devEquationData + (j*equationsPerThread*m * (m + 1))), equationsPerThread, devSolvedEquations, streams + j));
@@ -159,6 +159,7 @@ void startRadonMachine(double *dataPoints ) {
 		thVect.clear();
 
 		solveEquations << < gridSize, blockSize >> > (devData, devSolvedEquations, devNofEquation);
+		printM << <1, 1, 0>> > (10, 1, devData, "A");
 		cudaDeviceSynchronize();
 	}
 
@@ -229,9 +230,9 @@ void radonInstance(cusolverDnHandle_t cuSolver, int threadId, double *data, int 
 
 		d_A = (data + (i*m * (m + 1)));
 		d_B = (data + (m*m) + (i*m * (m + 1)));
-		//printM << <1, 1 ,0, *s >> > (m, m, d_A, "A");
-		//printf("\n");
-		//printM<<<1,1,0, *s>>>(m, 1, d_B, "B");
+		printM << <1, 1 ,0, *s >> > (m, m, d_A, "A");
+		printf("\n");
+		printM<<<1,1,0, *s>>>(m, 1, d_B, "B");
 		cudaStreamSynchronize(*s);
 		if (pivot) {
 			status = cusolverDnDgetrf(

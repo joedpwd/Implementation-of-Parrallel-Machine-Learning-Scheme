@@ -5,12 +5,12 @@
 //Function denseLUSolver has been adapted from the example from
 // the same resource.
 
-const int m = 3;
+const int print = 0;
+const int d = 12;
+const int r = d+2;
+const int m = d+1;
 const int lda = m;
 const int ldb = m;
-const int print = 0;
-const int d = 2;
-const int r = d+2;
 
 __device__ void printMatrix(int m, int n, const double*A, int lda, const char* name)
 {
