@@ -10,7 +10,7 @@ const int d = 2;
 
 const int r = d + 2; //Assuming d = 2
 
-const int h = 3; //Hyper parameter
+const int h = 10; //Hyper parameter
 
 const int m = d + 1; //Equivalent to d + 1
 
@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
 	std::string t;
 	std::string::size_type sz;
 
-	dataFile.open("C:/Users/jxd45/Documents/Python Scripts/csvtest.csv");
+	dataFile.open("C:/Users/jxd45/Documents/Python Scripts/small.csv");
 	long long *test = (long long *)malloc(sizeof(long long));
 	if (dataFile.is_open())
 	{
@@ -116,7 +116,7 @@ void startRadonMachine(double *dataPoints ) {
 	}
 
 	const dim3 blockSize(16, 16, 1);
-	const dim3 gridSize(4, 4, 1);
+	const dim3 gridSize(8, 8, 1);
 
 	cusolverDnHandle_t cuSolver = NULL;
 	cusolverStatus_t status = CUSOLVER_STATUS_SUCCESS;
