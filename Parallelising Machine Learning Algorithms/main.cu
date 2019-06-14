@@ -6,11 +6,11 @@ const int print = 1;
 	//Set Valuues
 	//h will be a hyper parameter passed to the program.
 
-const int d = 2;
+const int d = 12;
 
 const int r = d + 2; //Assuming d = 2
 
-const int h = 10; //Hyper parameter
+const int h = 1; //Hyper parameter
 
 const int m = d + 1; //Equivalent to d + 1
 
@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
 	std::string t;
 	std::string::size_type sz;
 
-	dataFile.open("C:/Users/jxd45/Documents/Python Scripts/small.csv");
+	dataFile.open("C:/Users/jxd45/Documents/Python Scripts/bigsmall.csv");
 	long long *test = (long long *)malloc(sizeof(long long));
 	if (dataFile.is_open())
 	{
@@ -45,7 +45,8 @@ int main(int argc, char **argv) {
 			//std::cout << t << '\n';
 			sz = 0;
 			for (j = 0; j < d; j++) {
-				*test = std::stoll(t.substr(sz), &sz);
+				t = t.substr(sz);
+				*test = std::stoll(t, &sz);
 				sz++;
 				*(data + (i++)) = *reinterpret_cast<double *>(test);
 			}
