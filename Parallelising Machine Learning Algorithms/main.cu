@@ -10,7 +10,7 @@ const int d = 12;
 
 const int r = d + 2; //Assuming d = 2
 
-const int h = 1; //Hyper parameter
+const int h = 3; //Hyper parameter
 
 const int m = d + 1; //Equivalent to d + 1
 
@@ -146,7 +146,7 @@ void startRadonMachine(double *dataPoints ) {
 		threads = (noOfEquations > maxThreads ? maxThreads : noOfEquations);
 		equationsPerThread = noOfEquations / threads;
 		
-		printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
+		//printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
 		
 		for (j = 0; j < threads; j++) {
 			thVect.push_back(std::thread(radonInstance, cuSolver, j, (devEquationData + (j*equationsPerThread*m * (m + 1))), equationsPerThread, devSolvedEquations, streams + j));
@@ -230,9 +230,9 @@ void radonInstance(cusolverDnHandle_t cuSolver, int threadId, double *data, int 
 
 		d_A = (data + (i*m * (m + 1)));
 		d_B = (data + (m*m) + (i*m * (m + 1)));
-		printM << <1, 1 ,0, *s >> > (m, m, d_A, "A");
-		printf("\n");
-		printM<<<1,1,0, *s>>>(m, 1, d_B, "B");
+		//printM << <1, 1 ,0, *s >> > (m, m, d_A, "A");
+		//printf("\n");
+		//printM<<<1,1,0, *s>>>(m, 1, d_B, "B");
 		cudaStreamSynchronize(*s);
 		if (pivot) {
 			status = cusolverDnDgetrf(
