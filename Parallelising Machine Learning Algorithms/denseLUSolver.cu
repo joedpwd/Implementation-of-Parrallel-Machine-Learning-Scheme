@@ -6,11 +6,11 @@
 // the same resource.
 
 const int print = 0;
-const int d = 12;
+/*const int d = 12;
 const int r = d+2;
 const int m = d+1;
 const int lda = m;
-const int ldb = m;
+const int ldb = m;*/
 
 __device__ void printMatrix(int m, int n, const double*A, int lda, const char* name)
 {
@@ -42,37 +42,40 @@ __global__ void configureEquations(int d, double *devData, double *devEquationDa
 	int tid = a + b * (gridDim.x * blockDim.x);
 	int c, j, i;
 
-	double *A = (double*)malloc(m*m * sizeof(double));
-	double *B = (double*)malloc(m * sizeof(double));
+	//double A[13*13];
+	//double B[13];
+
+	//double *A = (double*)malloc(m*m * sizeof(double));
+	//double *B = (double*)malloc(m * sizeof(double));
 	c = tid;
 	while(c < *devrh) {
 	
 		for (j = 0; j < d; j++) {
-			B[j] = -*(devData + j + (c*r*d));
+			*(devEquationData + j + (m*m) + (c*m * (m + 1))) = -*(devData + j + (c*r*d));
 		}
 
-		B[j] = -1;
+		*(devEquationData + j + (m*m) + (c*m * (m + 1))) = -1;
 
 		for (i = 1; i < r; i++) {
 			for (j = 0; j < d; j++) {
-				A[(i - 1)*m + j] = *(devData + (i*d) + j + (c*r*d));
+				*(devEquationData + (i - 1)*m + j + (c*m * (m + 1))) = *(devData + (i*d) + j + (c*r*d));
 			}
-			A[(i - 1)*m + j] = 1;
+			*(devEquationData + (i - 1)*m + j + (c*m * (m + 1))) = 1;
 		}
 
-		__syncthreads();
+		/*__syncthreads();
 
 		for (i = 0; i < m*m; i++) {
 			*(devEquationData + i + (c*m * (m + 1))) = A[i];
 		}
 		for (i = 0; i < m; i++) {
 			*(devEquationData + i + (m*m) + (c*m * (m + 1))) = B[i];
-		}
+		}*/
 
 		c += blockDim.x * blockDim.y * gridDim.x * gridDim.y;
 	}
-	free(A);
-	free(B);
+	//free(A);
+	//free(B);
 }
 
 __global__ void devMemoryCopy(int m, double *src, double *dest, int len) {
@@ -95,8 +98,8 @@ __global__ void solveEquations(int d, double *devData, double *devEquationData, 
 	int tid = a + b * (gridDim.x * blockDim.x);
 	int c, j, i;
 	double lambda;
-	double *hypothesis = (double*)malloc(d*sizeof(double));
-
+	//double *hypothesis = (double*)malloc(d*sizeof(double));
+	double hypothesis[12];
 	double *curData;
 	double *curEq;
 	c = tid;
@@ -148,5 +151,5 @@ __global__ void solveEquations(int d, double *devData, double *devEquationData, 
 		}
 		printf("\n");
 	}*/
-	free(hypothesis);
+	//free(hypothesis);
 }

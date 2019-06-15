@@ -3,8 +3,8 @@
 const int print = 1;
 
 //Get the dimensions of the data
-	//Set Valuues
-	//h will be a hyper parameter passed to the program.
+//Set Valuues
+//h will be a hyper parameter passed to the program.
 
 /*const int d = 12;
 
@@ -45,7 +45,6 @@ int main(int argc, char *argv[]) {
 
 	//Size of Data is r^h * d, where d is the no of features
 	double *data = (double *)malloc(sizeof(double) * rh * d);
-
 
 	//Create a vector of threads, one thread per execution of radon machine operation.
 	//std::thread *thArray = (std::thread *)malloc(sizeof(std::thread) * pow(r, h - 1));
@@ -153,14 +152,17 @@ void startRadonMachine(int d, int h, double *dataPoints ) {
 
 	//Allocate space for Equations, solved equations and space for data on the device. Then copy data to device.
 	//Allocate A and B (A -> (m * m)), (B->1*m)) for r^h instances
-	cudaMalloc(&devEquationData, (sizeof(double) * m * (m + 1))*(rh/r));
-	cudaMalloc(&devSolvedEquations, (sizeof(double) * m)*(rh / r));
-	cudaMalloc(&devData, sizeof(double) * rh * d);
-	cudaMemcpy(devData, dataPoints, sizeof(double) * rh * d, cudaMemcpyHostToDevice);
-
+	c1 = cudaMalloc(&devEquationData, (sizeof(double) * m * (m + 1))*(rh/r));
+	assert(cudaSuccess == c1);
+	c1 = cudaMalloc(&devSolvedEquations, (sizeof(double) * m)*(rh / r));
+	assert(cudaSuccess == c1);
+	c1 = cudaMalloc(&devData, sizeof(double) * rh * d);
+	assert(cudaSuccess == c1);
+	c1 = cudaMemcpy(devData, dataPoints, sizeof(double) * rh * d, cudaMemcpyHostToDevice);
+	assert(cudaSuccess == c1);
 	//Maintains the number of equations to be solved at each level of the radon tree
-	cudaMalloc(&devNofEquation, sizeof(int));
-	
+	c1 = cudaMalloc(&devNofEquation, sizeof(int));
+	assert(cudaSuccess == c1);
 	//printM << <1, 1 >> > (m, m, devData, "A");
 
 	for (i = 0; i < h; i++) {
@@ -171,7 +173,7 @@ void startRadonMachine(int d, int h, double *dataPoints ) {
 		threads = (noOfEquations > maxThreads ? maxThreads : noOfEquations);
 		equationsPerThread = noOfEquations / threads;
 		
-		//printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
+		printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
 		
 		for (j = 0; j < threads; j++) {
 			thVect.push_back(std::thread(radonInstance,d, cuSolver, j, (devEquationData + (j*equationsPerThread*m * (m + 1))), equationsPerThread, devSolvedEquations, streams + j));
