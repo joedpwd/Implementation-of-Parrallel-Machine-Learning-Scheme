@@ -258,9 +258,11 @@ void radonInstance(int d, cusolverDnHandle_t cuSolver, int threadId, double *dat
 
 		d_A = (data + (i*m * (m + 1)));
 		d_B = (data + (m*m) + (i*m * (m + 1)));
-		//printM << <1, 1 ,0, *s >> > (m, m, d_A, "A");
-		//printf("\n");
-		//printM<<<1,1,0, *s>>>(m, 1, d_B, "B");
+		/*if (threadId == 0 && i == 0) {
+			printM << <1, 1, 0, *s >> > (m, m, d_A, "A");
+			printf("\n");
+			printM << <1, 1, 0, *s >> > (m, 1, d_B, "B");
+		}*/
 		cudaStreamSynchronize(*s);
 		if (pivot) {
 			status = cusolverDnDgetrf(

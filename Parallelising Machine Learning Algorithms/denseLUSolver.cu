@@ -145,7 +145,8 @@ __global__ void solveEquations(int d, double *devData, double *devEquationData, 
 
 
 	//Debuggin purposes
-	/*if (threadIdx.x + threadIdx.y*blockDim.x == 0) {
+	/*__syncthreads();
+	if (blockDim.x * blockDim.y * gridDim.x * gridDim.y == 0) {
 		for (i = 0; i < *devrh*r*d; i++) {
 			printf("%.5f\n", *(devData + i));
 		}
