@@ -89,7 +89,7 @@ __global__ void devMemoryCopy(int m, double *src, double *dest, int len) {
 	}
 }
 
-__global__ void solveEquations(int d, double *devData, double *devEquationData, int *devrh) {
+__global__ void solveEquations(int d, double *devData, double *devEquationData, int *devrh, double *hypothesisWorkspace) {
 	int r = d + 2;
 	int m = d + 1;
 	
@@ -98,29 +98,29 @@ __global__ void solveEquations(int d, double *devData, double *devEquationData, 
 	int tid = a + b * (gridDim.x * blockDim.x);
 	int c, j, i;
 	double lambda;
-	//double *hypothesis = (double*)malloc(d*sizeof(double));
-	double hypothesis[12];
+	double *hypothesis;
 	double *curData;
 	double *curEq;
 	c = tid;
 
 	while (c < *devrh) {
+		hypothesis = hypothesisWorkspace + c * d;
 		curData = (devData + (c*r*d));
 		curEq = (devEquationData + (c*m));
 		lambda = 1;
 		for (i = 0; i < d; i++)
-			hypothesis[i] = *(curData + i);
+			*(hypothesis+i) = *(curData + i);
 		for (i = 0; i < m; i++) {
 			if (*(curEq + i) >= 0) {
 				lambda += *(curEq + i);
 				for (j = 0; j < d; j++)
-					hypothesis[j] += *(curEq + i) * *(curData + ((i + 1) *d) + j);
+					*(hypothesis+j) += *(curEq + i) * *(curData + ((i + 1) *d) + j);
 			}
 		}
 		
 		for (i = 0; i < d; i++) {
-			hypothesis[i] /= lambda;
-			*(curData + i) = hypothesis[i];
+			*(hypothesis+i) /= lambda;
+			*(curData + i) = *(hypothesis+i);
 		}
 
 		c += blockDim.x * blockDim.y * gridDim.x * gridDim.y;
@@ -146,8 +146,8 @@ __global__ void solveEquations(int d, double *devData, double *devEquationData, 
 
 	//Debuggin purposes
 	/*__syncthreads();
-	if (blockDim.x * blockDim.y * gridDim.x * gridDim.y == 0) {
-		for (i = 0; i < *devrh*r*d; i++) {
+	if (a + b * (gridDim.x * blockDim.x) == 0) {
+		for (i = 0; i < d; i++) {
 			printf("%.5f\n", *(devData + i));
 		}
 		printf("\n");
