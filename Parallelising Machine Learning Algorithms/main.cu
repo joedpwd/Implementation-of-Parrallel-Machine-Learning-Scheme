@@ -194,7 +194,7 @@ void startRadonMachine(int d, int h, double *dataPoints ) {
 		thVect.clear();
 		solveEquations << < gridSize, blockSize >> > (d, devData, devSolvedEquations, devNofEquation, hypothesisWorkspace);
 		cudaDeviceSynchronize();
-		printM << <1, 1, 0 >> > (40, 1, devData, "A");
+		printM << <1, 1, 0 >> > (pow(r, h - i), 1, devData, "A");
 	}
 
 	cudaMemcpy(dataPoints, devData, sizeof(double) * rh * d, cudaMemcpyDeviceToHost);
@@ -271,6 +271,9 @@ void radonInstance(int d, cusolverDnHandle_t cuSolver, int threadId, double *dat
 			printM << <1, 1, 0, *s >> > (m, m, d_A, "A");
 			printf("\n");
 			printM << <1, 1, 0, *s >> > (m, 1, d_B, "B");
+			printf("\n");
+			cudaStreamSynchronize(*s);
+			printf("%d\n", lwork);
 		}
 		cudaStreamSynchronize(*s);
 		if (pivot) {
