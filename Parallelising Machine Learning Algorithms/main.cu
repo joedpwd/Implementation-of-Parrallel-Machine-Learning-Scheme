@@ -125,7 +125,7 @@ void startRadonMachine(int d, int h, double *dataPoints ) {
 	double *devSolvedEquations;
 	double *hypothesisWorkspace;
 	int *devNofEquation;
-	int maxThreads = 14;
+	int maxThreads = r;
 	int threads;
 	int noOfEquations;
 	int equationsPerThread;
