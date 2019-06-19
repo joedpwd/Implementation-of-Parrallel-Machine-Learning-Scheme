@@ -19,6 +19,15 @@ const int rh = pow(r, h);*/
 //"C:\Users\jxd45\Documents\Python Scripts\big.csv"
 
 int main(int argc, char *argv[]) {
+	
+	cudaError_t c1;
+
+	size_t *s =  (size_t *)malloc(sizeof(size_t));
+	*s = 1000;
+	c1 = cudaDeviceGetLimit(s, cudaLimitPrintfFifoSize);
+	assert(cudaSuccess == c1);
+	c1 = cudaDeviceSetLimit(cudaLimitPrintfFifoSize, *s * 20);
+	assert(cudaSuccess == c1);
 
 	int d;
 	int h;
@@ -181,8 +190,10 @@ void startRadonMachine(int d, int h, double *dataPoints ) {
 		threads = (noOfEquations > maxThreads ? maxThreads : noOfEquations);
 		equationsPerThread = noOfEquations / threads;
 		
-		printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
-		
+		//printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
+		cudaDeviceSynchronize();
+		//printM << <1, 1, 0 >> > (pow(r, h - i)*d, 1, devData, "A");
+		cudaDeviceSynchronize();
 		for (j = 0; j < threads; j++) {
 			thVect.push_back(std::thread(radonInstance,d, cuSolver, j, (devEquationData + (j*equationsPerThread*m * (m + 1))), equationsPerThread, devSolvedEquations, streams + j));
 		}
@@ -194,7 +205,7 @@ void startRadonMachine(int d, int h, double *dataPoints ) {
 		thVect.clear();
 		solveEquations << < gridSize, blockSize >> > (d, devData, devSolvedEquations, devNofEquation, hypothesisWorkspace);
 		cudaDeviceSynchronize();
-		printM << <1, 1, 0 >> > (pow(r, h - i), 1, devData, "A");
+		//printM << <1, 1, 0 >> > (pow(r, h - i), 1, devData, "A");
 	}
 
 	cudaMemcpy(dataPoints, devData, sizeof(double) * rh * d, cudaMemcpyDeviceToHost);
@@ -267,14 +278,14 @@ void radonInstance(int d, cusolverDnHandle_t cuSolver, int threadId, double *dat
 
 		d_A = (data + (i*m * (m + 1)));
 		d_B = (data + (m*m) + (i*m * (m + 1)));
-		if (threadId == 0 && i == 0) {
+		/*if (threadId == 7 && i == 0) {
 			printM << <1, 1, 0, *s >> > (m, m, d_A, "A");
 			printf("\n");
 			printM << <1, 1, 0, *s >> > (m, 1, d_B, "B");
 			printf("\n");
 			cudaStreamSynchronize(*s);
-			printf("%d\n", lwork);
-		}
+			//printf("%d\n", lwork);
+		}*/
 		cudaStreamSynchronize(*s);
 		if (pivot) {
 			status = cusolverDnDgetrf(
@@ -331,9 +342,9 @@ void radonInstance(int d, cusolverDnHandle_t cuSolver, int threadId, double *dat
 		assert(CUSOLVER_STATUS_SUCCESS == status);
 
 		cudaStreamSynchronize(*s);
-		if (threadId == 0 && i == 0) {
+		/*if (threadId == 7 && i == 0) {
 			printM << <1, 1, 0, *s >> > (m, 1, d_B, "B");
-		}
+		}*/
 		
 
 		cudaStreamSynchronize(*s);

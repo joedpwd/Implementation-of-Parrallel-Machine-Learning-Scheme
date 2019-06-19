@@ -131,16 +131,18 @@ __global__ void solveEquations(int d, double *devData, double *devEquationData, 
 
 	__syncthreads();
 	
+	if (tid == 0) {
+		while (c < *devrh) {
+			printf("%d\n", c);
+			for (i = 0; i < d; i++) {
+				*(devData + i + c * d) = *(devData + i + c * r * d);
+				/*if (c == 0) {
+					printf("%.5f\n", *(devData + i + c * d));
+				}*/
+			}
 
-	while (c < *devrh) {
-		for (i = 0; i < d; i++) {
-			*(devData + i + c * d) = *(devData + i + c * r * d);
-			/*if (c == 0) {
-				printf("%.5f\n", *(devData + i + c * d));
-			}*/
+			c += 1;// blockDim.x * blockDim.y * gridDim.x * gridDim.y;
 		}
-
-		c += blockDim.x * blockDim.y * gridDim.x * gridDim.y;
 	}
 
 
