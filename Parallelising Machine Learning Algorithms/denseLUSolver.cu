@@ -133,7 +133,6 @@ __global__ void solveEquations(int d, double *devData, double *devEquationData, 
 	
 	if (tid == 0) {
 		while (c < *devrh) {
-			printf("%d\n", c);
 			for (i = 0; i < d; i++) {
 				*(devData + i + c * d) = *(devData + i + c * r * d);
 				/*if (c == 0) {

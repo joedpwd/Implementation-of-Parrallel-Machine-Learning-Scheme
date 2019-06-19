@@ -20,14 +20,14 @@ const int rh = pow(r, h);*/
 
 int main(int argc, char *argv[]) {
 	
-	cudaError_t c1;
+	/*cudaError_t c1;
 
 	size_t *s =  (size_t *)malloc(sizeof(size_t));
 	*s = 1000;
 	c1 = cudaDeviceGetLimit(s, cudaLimitPrintfFifoSize);
 	assert(cudaSuccess == c1);
 	c1 = cudaDeviceSetLimit(cudaLimitPrintfFifoSize, *s * 20);
-	assert(cudaSuccess == c1);
+	assert(cudaSuccess == c1);*/
 
 	int d;
 	int h;
@@ -341,7 +341,7 @@ void radonInstance(int d, cusolverDnHandle_t cuSolver, int threadId, double *dat
 	
 		assert(CUSOLVER_STATUS_SUCCESS == status);
 
-		cudaStreamSynchronize(*s);
+		//cudaStreamSynchronize(*s);
 		/*if (threadId == 7 && i == 0) {
 			printM << <1, 1, 0, *s >> > (m, 1, d_B, "B");
 		}*/
