@@ -232,7 +232,7 @@ void startRadonMachine(int d, int h, double *dataPoints ) {
 
 void radonInstance(int d, cusolverDnHandle_t cuSolver, int threadId, double *data, int equations, double *solvedEquations, cudaStream_t *s)
 {
-	mtx.lock();
+	
 	int m = d + 1;
 	cusolverStatus_t status = CUSOLVER_STATUS_SUCCESS;	/*Stores Error value for cusolver function calls*/
 
@@ -251,7 +251,7 @@ void radonInstance(int d, cusolverDnHandle_t cuSolver, int threadId, double *dat
 	const int ldb = m;
 
 	const int pivot = 1; /*By default we will be using pivoting (pivot = 1)*/
-
+	mtx.lock();
 	c1 = cudaMalloc((void**)&d_Ipiv, sizeof(int) * m);
 	c2 = cudaMalloc((void**)&d_info, sizeof(int));
 	assert(cudaSuccess == c1);
