@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
 	
 	//Start timer
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
-	startRadonMachine(d,h,data);
+	RadonMachineInitialise(d,h,data);
 	//End Timers
 	high_resolution_clock::time_point t2 = high_resolution_clock::now();
 	
@@ -122,7 +122,69 @@ int main(int argc, char *argv[]) {
 	free(data);
 }
 
-void startRadonMachine(int d, int h, double *dataPoints ) {
+void RadonMachineInitialise(int d, int h, double *dataPoints ) {
+	int m = d + 1;
+	int r = d + 2;
+	int rh = pow(r, h);
+	
+	int h1 = h;
+	int hmax;
+	int numInstances;
+	int i, j;
+	double *subsetDataPoints;
+	int subsetSize;
+
+	size_t problemAllocation = sizeof(double) * rh * d;
+	size_t devFree;
+	size_t devTotal;
+	
+
+	cudaError_t c1;
+
+	c1 = cudaMemGetInfo(&devFree, &devTotal);
+	assert(cudaSuccess == c1);
+
+	if (devFree > problemAllocation)
+		RadonMachineInstance(d, h, dataPoints);
+	else {
+
+	
+		hmax = getMaxAllocation(devFree, d);
+		while (h1 > hmax) {
+			numInstances = pow(r, h1 - hmax);
+
+			for (i = 0; i < numInstances; i++) {
+				subsetSize = pow(r, hmax) * d * sizeof(double);
+				subsetDataPoints = dataPoints + (i * subsetSize);
+				RadonMachineInstance(d, hmax, subsetDataPoints);
+			}
+			for (i = 0; i < numInstances; i++) {
+				//Collapse Memory
+				for (j = 0; j < d; j++)
+					*(dataPoints + (i*d) + j) = *(dataPoints + (i*subsetSize) + j);
+			}
+			h1 -= hmax;
+			hmax = getMaxAllocation(devFree, d);
+		}
+		RadonMachineInstance(d, h1, dataPoints);
+	}
+}
+
+int getMaxAllocation(size_t mem, int d) {
+	size_t m1 = 0;
+	int h = 0;
+	int r = d + 2;
+	int rh;
+	do {
+		rh = pow(r, h);
+		m1 = sizeof(double) * rh * d;
+		h++;
+	} while (m1 < mem);
+	
+	return h - 1;
+}
+
+void RadonMachineInstance(int d, int h, double *dataPoints) {
 
 	int m = d + 1;
 	int r = d + 2;
@@ -144,14 +206,14 @@ void startRadonMachine(int d, int h, double *dataPoints ) {
 
 	//Create Streams
 	streams = (cudaStream_t *)malloc(maxThreads * sizeof(cudaStream_t));
-	
+
 	//Allocate size of heap for device
 	//c1 = cudaDeviceSetLimit(cudaLimitMallocHeapSize, sizeof(double)*d * 16 * 16 * 8 * 8);
 	//assert(cudaSuccess == c1);
 	//cudaThreadSetLimit(cudaLimitMallocHeapSize, sizeof(double)*d*16*16*8*8);
 
 	for (i = 0; i < maxThreads; i++) {
-		c1 = cudaStreamCreateWithFlags(streams+i, cudaStreamNonBlocking);
+		c1 = cudaStreamCreateWithFlags(streams + i, cudaStreamNonBlocking);
 		assert(cudaSuccess == c1);
 	}
 
@@ -167,7 +229,7 @@ void startRadonMachine(int d, int h, double *dataPoints ) {
 
 	//Allocate space for Equations, solved equations and space for data on the device. Then copy data to device.
 	//Allocate A and B (A -> (m * m)), (B->1*m)) for r^h instances
-	c1 = cudaMalloc(&devEquationData, (sizeof(double) * m * (m + 1))*(rh/r));
+	c1 = cudaMalloc(&devEquationData, (sizeof(double) * m * (m + 1))*(rh / r));
 	assert(cudaSuccess == c1);
 	c1 = cudaMalloc(&devSolvedEquations, (sizeof(double) * m)*(rh / r));
 	assert(cudaSuccess == c1);
@@ -189,13 +251,13 @@ void startRadonMachine(int d, int h, double *dataPoints ) {
 		cudaDeviceSynchronize();
 		threads = (noOfEquations > maxThreads ? maxThreads : noOfEquations);
 		equationsPerThread = noOfEquations / threads;
-		
+
 		//printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
 		cudaDeviceSynchronize();
 		//printM << <1, 1, 0 >> > (pow(r, h - i)*d, 1, devData, "A");
 		cudaDeviceSynchronize();
 		for (j = 0; j < threads; j++) {
-			thVect.push_back(std::thread(radonInstance,d, cuSolver, j, (devEquationData + (j*equationsPerThread*m * (m + 1))), equationsPerThread, devSolvedEquations, streams + j));
+			thVect.push_back(std::thread(radonInstance, d, cuSolver, j, (devEquationData + (j*equationsPerThread*m * (m + 1))), equationsPerThread, devSolvedEquations, streams + j));
 		}
 		for (std::thread & th : thVect)
 		{
@@ -209,14 +271,14 @@ void startRadonMachine(int d, int h, double *dataPoints ) {
 	}
 
 	cudaMemcpy(dataPoints, devData, sizeof(double) * rh * d, cudaMemcpyDeviceToHost);
-	
+
 	if (cuSolver) cusolverDnDestroy(cuSolver);
 
 	for (i = 0; i < maxThreads; i++) {
 		c1 = cudaStreamDestroy(*(streams + i));
 		assert(cudaSuccess == c1);
 	}
-	
+
 	c1 = cudaFree(devData);
 	assert(cudaSuccess == c1);
 	c1 = cudaFree(devSolvedEquations);
