@@ -20,14 +20,6 @@ const int rh = pow(r, h);*/
 
 int main(int argc, char *argv[]) {
 	
-	/*cudaError_t c1;
-
-	size_t *s =  (size_t *)malloc(sizeof(size_t));
-	*s = 1000;
-	c1 = cudaDeviceGetLimit(s, cudaLimitPrintfFifoSize);
-	assert(cudaSuccess == c1);
-	c1 = cudaDeviceSetLimit(cudaLimitPrintfFifoSize, *s * 20);
-	assert(cudaSuccess == c1);*/
 
 	int d;
 	int h;
@@ -59,6 +51,8 @@ int main(int argc, char *argv[]) {
 	//std::thread *thArray = (std::thread *)malloc(sizeof(std::thread) * pow(r, h - 1));
 	std::vector<std::thread> thVect;
 
+	//Output the execution time to file
+	std::ofstream times;
 	
 	//Read data in from CSV, data is stored in long long type and casted back into double type.
 	std::ifstream dataFile;
@@ -115,7 +109,10 @@ int main(int argc, char *argv[]) {
 	
 	auto duration = duration_cast<microseconds>(t2 - t1).count();
 
-	std::cout << duration << " microseconds";
+	times.open("times.txt",std::fstream::app | std::fstream::out);
+	times << duration << std::endl;
+	times.close();
+	//std::cout << duration << " microseconds";
 	
 	
 	free(test);
