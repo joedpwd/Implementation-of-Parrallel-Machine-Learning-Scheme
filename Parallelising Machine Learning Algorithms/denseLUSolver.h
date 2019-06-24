@@ -15,6 +15,7 @@
 
 __device__ void printMatrix(int m, int n, const double*A, int lda, const char* name);
 __global__ void printM(int m, int n, const double*A, const char* name);
+__global__ void initAarr(int d, double **arr, double *eqData, int numEquations);
 __global__ void configureEquations(int d, double *devData, double *devEquationData, int *devrh);
 __global__ void solveEquations(int d, double *devData, double *devEquationData, int *devrh, double *hypothesisWorkspace);
 __global__ void devMemoryCopy(int m, double *src, double *dest, int len);

@@ -195,6 +195,16 @@ void RadonMachineInstance(int d, int h, double *dataPoints) {
 	double *devEquationData;
 	double *devSolvedEquations;
 	double *hypothesisWorkspace;
+
+	int *pivotArray;
+	int *infoArray;
+	double **Aarrays;
+
+	double *currentData;
+	int *currentPiv;
+	int *currentInfo;
+	double **currentAarr;
+
 	int *devNofEquation;
 	int maxThreads = r;
 	int threads;
@@ -203,6 +213,16 @@ void RadonMachineInstance(int d, int h, double *dataPoints) {
 	cudaError_t c1;
 	std::vector<std::thread> thVect;
 	cudaStream_t *streams = NULL;
+
+	c1 = cudaMalloc(&Aarrays, sizeof(double *) * rh/r * d);
+	assert(cudaSuccess == c1);
+	c1 = cudaMalloc(&pivotArray, sizeof(int) * rh/r * d * m);
+	assert(cudaSuccess == c1);
+	c1 = cudaMalloc(&infoArray, sizeof(int) * rh/r * d);
+	assert(cudaSuccess == c1);
+
+	cublasStatus_t cblsStat;
+	cublasHandle_t *cblsContexts = (cublasHandle_t *)malloc(maxThreads * sizeof(cublasHandle_t));
 
 	//Create Streams
 	streams = (cudaStream_t *)malloc(maxThreads * sizeof(cudaStream_t));
@@ -215,17 +235,12 @@ void RadonMachineInstance(int d, int h, double *dataPoints) {
 	for (i = 0; i < maxThreads; i++) {
 		c1 = cudaStreamCreateWithFlags(streams + i, cudaStreamNonBlocking);
 		assert(cudaSuccess == c1);
+		cblsStat = cublasCreate(cblsContexts + i);
+		assert(cblsStat == CUBLAS_STATUS_SUCCESS);
 	}
 
 	const dim3 blockSize(16, 16, 1);
 	const dim3 gridSize(8, 8, 1);
-
-	cusolverDnHandle_t cuSolver = NULL;
-	cusolverStatus_t status = CUSOLVER_STATUS_SUCCESS;
-
-	/* Initialise cuSolver*/
-	status = cusolverDnCreate(&cuSolver);
-	assert(CUSOLVER_STATUS_SUCCESS == status);
 
 	//Allocate space for Equations, solved equations and space for data on the device. Then copy data to device.
 	//Allocate A and B (A -> (m * m)), (B->1*m)) for r^h instances
@@ -244,6 +259,8 @@ void RadonMachineInstance(int d, int h, double *dataPoints) {
 	assert(cudaSuccess == c1);
 	//printM << <1, 1 >> > (m, m, devData, "A");
 
+	initAarr << < gridSize, blockSize >> > (d, Aarrays, devEquationData, rh/r);
+
 	for (i = 0; i < h; i++) {
 		noOfEquations = pow(r, h - 1 - i);
 		cudaMemcpy(devNofEquation, &noOfEquations, sizeof(int), cudaMemcpyHostToDevice);
@@ -257,7 +274,11 @@ void RadonMachineInstance(int d, int h, double *dataPoints) {
 		//printM << <1, 1, 0 >> > (pow(r, h - i)*d, 1, devData, "A");
 		cudaDeviceSynchronize();
 		for (j = 0; j < threads; j++) {
-			thVect.push_back(std::thread(radonInstance, d, cuSolver, j, (devEquationData + (j*equationsPerThread*m * (m + 1))), equationsPerThread, devSolvedEquations, streams + j));
+			//currentData = (devEquationData + (j*equationsPerThread*m * (m + 1)));
+			currentInfo = infoArray + j * equationsPerThread;
+			currentAarr = Aarrays + j * equationsPerThread;
+			currentPiv = pivotArray + (j * m * equationsPerThread);
+			thVect.push_back(std::thread(radonInstance, d, cblsContexts + j, j, currentAarr, currentPiv, currentInfo, equationsPerThread, devSolvedEquations, streams + j));
 		}
 		for (std::thread & th : thVect)
 		{
@@ -272,9 +293,9 @@ void RadonMachineInstance(int d, int h, double *dataPoints) {
 
 	cudaMemcpy(dataPoints, devData, sizeof(double) * rh * d, cudaMemcpyDeviceToHost);
 
-	if (cuSolver) cusolverDnDestroy(cuSolver);
-
 	for (i = 0; i < maxThreads; i++) {
+		cblsStat = cublasDestroy(*(cblsContexts + i));
+		assert(cblsStat == CUBLAS_STATUS_SUCCESS);
 		c1 = cudaStreamDestroy(*(streams + i));
 		assert(cudaSuccess == c1);
 	}
@@ -287,16 +308,24 @@ void RadonMachineInstance(int d, int h, double *dataPoints) {
 	assert(cudaSuccess == c1);
 	c1 = cudaFree(hypothesisWorkspace);
 	assert(cudaSuccess == c1);
+	c1 = cudaFree(streams);
+	assert(cudaSuccess == c1);
+	c1 = cudaFree(infoArray);
+	assert(cudaSuccess == c1);
+	c1 = cudaFree(pivotArray);
+	assert(cudaSuccess == c1);
 
-	free(streams);
-
+	free(Aarrays);
 }
 
-void radonInstance(int d, cusolverDnHandle_t cuSolver, int threadId, double *data, int equations, double *solvedEquations, cudaStream_t *s)
+void radonInstance(int d, cublasHandle_t *cublas, int threadId, double **data, int *piv, int *info, int equations, double *solvedEquations, cudaStream_t *s)
 {
 	
 	int m = d + 1;
-	cusolverStatus_t status = CUSOLVER_STATUS_SUCCESS;	/*Stores Error value for cusolver function calls*/
+	cublasStatus_t cblsStat;
+
+	cblsStat = cublasSetStream(*cublas, *s);
+	assert(cblsStat == CUBLAS_STATUS_SUCCESS);
 
 	/*Used to handle generic cuda errors*/
 	cudaError_t c1 = cudaSuccess;
@@ -318,102 +347,12 @@ void radonInstance(int d, cusolverDnHandle_t cuSolver, int threadId, double *dat
 	c2 = cudaMalloc((void**)&d_info, sizeof(int));
 	assert(cudaSuccess == c1);
 	assert(cudaSuccess == c2);
-	
-	
-	status = cusolverDnSetStream(cuSolver, *s);
-	assert(CUSOLVER_STATUS_SUCCESS == status);
-	status = cusolverDnDgetrf_bufferSize(
-		cuSolver,
-		m,
-		m,
-		d_A,
-		lda,
-		&lwork);
-	assert(CUSOLVER_STATUS_SUCCESS == status);
 
-	c1 = cudaMalloc((void**)&d_work, sizeof(double)*lwork);
-	assert(cudaSuccess == c1);
+	cublasDgetrfBatched(*cublas, m, data, m, piv, info, equations);
 
-	/* Perform LU Factorisation*/
-
-	for (int i = 0; i < equations; i++) {
-
-		d_A = (data + (i*m * (m + 1)));
-		d_B = (data + (m*m) + (i*m * (m + 1)));
-		/*if (threadId == 7 && i == 0) {
-			printM << <1, 1, 0, *s >> > (m, m, d_A, "A");
-			printf("\n");
-			printM << <1, 1, 0, *s >> > (m, 1, d_B, "B");
-			printf("\n");
-			cudaStreamSynchronize(*s);
-			//printf("%d\n", lwork);
-		}*/
-		cudaStreamSynchronize(*s);
-		if (pivot) {
-			status = cusolverDnDgetrf(
-				cuSolver,
-				m,
-				m,
-				d_A,
-				lda,
-				d_work,
-				d_Ipiv,
-				d_info);
-		}
-		else {
-			status = cusolverDnDgetrf(
-				cuSolver,
-				m,
-				m,
-				d_A,
-				lda,
-				d_work,
-				NULL,
-				d_info);
-		}
-		
-		assert(CUSOLVER_STATUS_SUCCESS == status);
-		cudaStreamSynchronize(*s);
-		if (pivot) {
-			status = cusolverDnDgetrs(
-				cuSolver,
-				CUBLAS_OP_N,
-				m,
-				1, /* nrhs */
-				d_A,
-				lda,
-				d_Ipiv,
-				d_B,
-				ldb,
-				d_info);
-		}
-		else {
-			status = cusolverDnDgetrs(
-				cuSolver,
-				CUBLAS_OP_N,
-				m,
-				1, /* nrhs */
-				d_A,
-				lda,
-				NULL,
-				d_B,
-				ldb,
-				d_info);
-		}
-	
-		assert(CUSOLVER_STATUS_SUCCESS == status);
-
-		//cudaStreamSynchronize(*s);
-		/*if (threadId == 7 && i == 0) {
-			printM << <1, 1, 0, *s >> > (m, 1, d_B, "B");
-		}*/
-		
-
-		cudaStreamSynchronize(*s);
-		devMemoryCopy << <1, 1, 0, *s >> > (m, d_B, (solvedEquations + (threadId*equations*m) + i * m), m);
-		cudaStreamSynchronize(*s);
-	}
-
+	cudaStreamSynchronize(*s);
+	devMemoryCopy << <1, 1, 0, *s >> > (m, d_B, (solvedEquations + (threadId*equations*m) + i * m), m);
+	cudaStreamSynchronize(*s);
 
 	/* free resources */
 	if (d_Ipiv) cudaFree(d_Ipiv);

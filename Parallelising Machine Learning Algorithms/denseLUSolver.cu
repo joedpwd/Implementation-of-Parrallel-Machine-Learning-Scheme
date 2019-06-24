@@ -32,6 +32,21 @@ __global__ void printM(int m, int n, const double*A, const char* name)
 	printf("\n");
 }
 
+__global__ void initAarr(int d, double **arr, double *eqData, int numEquations) {
+	int r = d + 2;
+	int m = d + 1;
+
+	int a = blockIdx.x * blockDim.x + threadIdx.x;
+	int b = blockIdx.y * blockDim.y + threadIdx.y;
+	int tid = a + b * (gridDim.x * blockDim.x);
+	int c, j, i;
+
+	while (c < numEquations) {
+		*(arr + c) = (eqData + (c*m * (m + 1)));
+		c += blockDim.x * blockDim.y * gridDim.x * gridDim.y;
+	}
+}
+
 __global__ void configureEquations(int d, double *devData, double *devEquationData, int *devrh) {
 	
 	int r = d + 2;
