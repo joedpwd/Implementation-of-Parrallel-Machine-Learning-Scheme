@@ -21,4 +21,4 @@ int main(int argc, char *argv[]);
 void RadonMachineInitialise(int d, int h, double *dataPoints);
 void RadonMachineInstance(int d, int h, double *dataPoints);
 int getMaxAllocation(size_t mem, int d);
-void radonInstance(int d, cublasHandle_t *cublas, int threadId, double **data, int *piv, int *info, int equations, double *solvedEquations, cudaStream_t *s);
+void radonInstance(int d, cublasHandle_t *cublas, int threadId, double **d_A, double **d_B, int *piv, int *info, int equations, double *solvedEquations, cudaStream_t *s);

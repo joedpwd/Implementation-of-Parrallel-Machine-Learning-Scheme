@@ -199,11 +199,13 @@ void RadonMachineInstance(int d, int h, double *dataPoints) {
 	int *pivotArray;
 	int *infoArray;
 	double **Aarrays;
+	double **Barrays;
 
 	double *currentData;
 	int *currentPiv;
 	int *currentInfo;
 	double **currentAarr;
+	double **currentBarr;
 
 	int *devNofEquation;
 	int maxThreads = r;
@@ -215,6 +217,8 @@ void RadonMachineInstance(int d, int h, double *dataPoints) {
 	cudaStream_t *streams = NULL;
 
 	c1 = cudaMalloc(&Aarrays, sizeof(double *) * rh/r * d);
+	assert(cudaSuccess == c1);
+	c1 = cudaMalloc(&Barrays, sizeof(double *) * rh / r * d);
 	assert(cudaSuccess == c1);
 	c1 = cudaMalloc(&pivotArray, sizeof(int) * rh/r * d * m);
 	assert(cudaSuccess == c1);
@@ -259,8 +263,11 @@ void RadonMachineInstance(int d, int h, double *dataPoints) {
 	assert(cudaSuccess == c1);
 	//printM << <1, 1 >> > (m, m, devData, "A");
 
-	initAarr << < gridSize, blockSize >> > (d, Aarrays, devEquationData, rh/r);
-
+	initAarr << < gridSize, blockSize >> > (d, Aarrays, Barrays, devEquationData, rh/r);
+	cudaDeviceSynchronize();
+	printPA << <1, 1, 0 >> > (rh/r, 1, Aarrays, "A");
+	cudaDeviceSynchronize();
+	//printPA << <1, 1, 0 >> > (rh / r, 1, Barrays, "A");
 	for (i = 0; i < h; i++) {
 		noOfEquations = pow(r, h - 1 - i);
 		cudaMemcpy(devNofEquation, &noOfEquations, sizeof(int), cudaMemcpyHostToDevice);
@@ -277,8 +284,9 @@ void RadonMachineInstance(int d, int h, double *dataPoints) {
 			//currentData = (devEquationData + (j*equationsPerThread*m * (m + 1)));
 			currentInfo = infoArray + j * equationsPerThread;
 			currentAarr = Aarrays + j * equationsPerThread;
+			currentBarr = Barrays + j * equationsPerThread;
 			currentPiv = pivotArray + (j * m * equationsPerThread);
-			thVect.push_back(std::thread(radonInstance, d, cblsContexts + j, j, currentAarr, currentPiv, currentInfo, equationsPerThread, devSolvedEquations, streams + j));
+			thVect.push_back(std::thread(radonInstance, d, cblsContexts + j, j, currentAarr, currentBarr, currentPiv, currentInfo, equationsPerThread, devSolvedEquations, streams + j));
 		}
 		for (std::thread & th : thVect)
 		{
@@ -314,25 +322,28 @@ void RadonMachineInstance(int d, int h, double *dataPoints) {
 	assert(cudaSuccess == c1);
 	c1 = cudaFree(pivotArray);
 	assert(cudaSuccess == c1);
+	c1 = cudaFree(Barrays);
+	assert(cudaSuccess == c1);
+	c1 = cudaFree(Aarrays);
+	assert(cudaSuccess == c1);
 
-	free(Aarrays);
 }
 
-void radonInstance(int d, cublasHandle_t *cublas, int threadId, double **data, int *piv, int *info, int equations, double *solvedEquations, cudaStream_t *s)
+void radonInstance(int d, cublasHandle_t *cublas, int threadId, double **d_A, double **d_B, int *piv, int *info, int equations, double *solvedEquations, cudaStream_t *s)
 {
 	
 	int m = d + 1;
 	cublasStatus_t cblsStat;
-
+	int i;
 	cblsStat = cublasSetStream(*cublas, *s);
 	assert(cblsStat == CUBLAS_STATUS_SUCCESS);
 
 	/*Used to handle generic cuda errors*/
-	cudaError_t c1 = cudaSuccess;
-	cudaError_t c2 = cudaSuccess;
+	//cudaError_t c1 = cudaSuccess;
+	//cudaError_t c2 = cudaSuccess;
 
-	double *d_A = NULL; /* device copy of A */
-	double *d_B = NULL; /* device copy of B */
+	//double *d_A = NULL; /* device copy of A */
+	//double *d_B = NULL; /* device copy of B */
 	int *d_Ipiv = NULL; /* pivoting sequence */
 	int *d_info = NULL; /* error info for cuSolverDn */
 	int  lwork = 0;     /* size of workspace for suSolverDn */
@@ -340,23 +351,17 @@ void radonInstance(int d, cublasHandle_t *cublas, int threadId, double **data, i
 
 	const int lda = m;
 	const int ldb = m;
+	double alpha = 1.f;
 
-	const int pivot = 1; /*By default we will be using pivoting (pivot = 1)*/
-	mtx.lock();
-	c1 = cudaMalloc((void**)&d_Ipiv, sizeof(int) * m);
-	c2 = cudaMalloc((void**)&d_info, sizeof(int));
-	assert(cudaSuccess == c1);
-	assert(cudaSuccess == c2);
+	cblsStat = cublasDgetrfBatched(*cublas, m, d_A, m, piv, info, equations);
+	assert(cblsStat == CUBLAS_STATUS_SUCCESS);
+	cblsStat = cublasDtrsmBatched(*cublas, CUBLAS_SIDE_LEFT, CUBLAS_FILL_MODE_LOWER, CUBLAS_OP_N, CUBLAS_DIAG_UNIT, m, 1, &alpha, d_A, m, d_B , m, equations);
+	assert(cblsStat == CUBLAS_STATUS_SUCCESS);
+	cblsStat = cublasDtrsmBatched(*cublas, CUBLAS_SIDE_LEFT, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, CUBLAS_DIAG_NON_UNIT, m, 1, &alpha, d_A, m, d_B , m, equations);
+	assert(cblsStat == CUBLAS_STATUS_SUCCESS);
+	//cudaStreamSynchronize(*s);
+	for (i=0; i<equations; i++)
+		devMemoryCopy << <1, 1, 0, *s >> > (m, *(d_B)+i, (solvedEquations + (threadId*equations*m) + i * m), m);
+	//cudaStreamSynchronize(*s);
 
-	cublasDgetrfBatched(*cublas, m, data, m, piv, info, equations);
-
-	cudaStreamSynchronize(*s);
-	devMemoryCopy << <1, 1, 0, *s >> > (m, d_B, (solvedEquations + (threadId*equations*m) + i * m), m);
-	cudaStreamSynchronize(*s);
-
-	/* free resources */
-	if (d_Ipiv) cudaFree(d_Ipiv);
-	if (d_info) cudaFree(d_info);
-	if (d_work) cudaFree(d_work);
-	mtx.unlock();
 }

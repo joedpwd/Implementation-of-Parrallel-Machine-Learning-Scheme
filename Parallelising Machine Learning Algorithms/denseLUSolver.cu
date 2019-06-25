@@ -32,7 +32,18 @@ __global__ void printM(int m, int n, const double*A, const char* name)
 	printf("\n");
 }
 
-__global__ void initAarr(int d, double **arr, double *eqData, int numEquations) {
+__global__ void printPA(int m, int n, double**A, const char* name)
+{
+	int col, row;
+	for (row = 0; row < m; row++) {
+		for (col = 0; col < n; col++)
+			printf("%d - %x\t", row * n + col, *(A + row * n + col));
+		printf("\n");
+	}
+	printf("\n");
+}
+
+__global__ void initAarr(int d, double **arr, double **brr, double *eqData, int numEquations) {
 	int r = d + 2;
 	int m = d + 1;
 
@@ -40,8 +51,12 @@ __global__ void initAarr(int d, double **arr, double *eqData, int numEquations) 
 	int b = blockIdx.y * blockDim.y + threadIdx.y;
 	int tid = a + b * (gridDim.x * blockDim.x);
 	int c, j, i;
-
+	c = tid;
 	while (c < numEquations) {
+		printf("%d\n", c);
+		printf("%d\n", (eqData + (c*m * (m + 1)) + m * m));
+		printf("%d\n", (eqData + (c*m * (m + 1))));
+		*(brr + c) = (eqData + (c*m * (m + 1)) + m*m);
 		*(arr + c) = (eqData + (c*m * (m + 1)));
 		c += blockDim.x * blockDim.y * gridDim.x * gridDim.y;
 	}
