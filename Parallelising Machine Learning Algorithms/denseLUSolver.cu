@@ -2,15 +2,9 @@
 
 //Function printMatrix is taken from:
 //https://docs.nvidia.com/cuda/cusolver/index.html#lu_examples
-//Function denseLUSolver has been adapted from the example from
-// the same resource.
+//This provided a reference for using cuSolver to solve equations using LU Decomposition.
 
 const int print = 0;
-/*const int d = 12;
-const int r = d+2;
-const int m = d+1;
-const int lda = m;
-const int ldb = m;*/
 
 __device__ void printMatrix(int m, int n, const double*A, int lda, const char* name)
 {
@@ -42,11 +36,6 @@ __global__ void configureEquations(int d, double *devData, double *devEquationDa
 	int tid = a + b * (gridDim.x * blockDim.x);
 	int c, j, i;
 
-	//double A[13*13];
-	//double B[13];
-
-	//double *A = (double*)malloc(m*m * sizeof(double));
-	//double *B = (double*)malloc(m * sizeof(double));
 	c = tid;
 	while(c < *devrh) {
 	
@@ -63,19 +52,11 @@ __global__ void configureEquations(int d, double *devData, double *devEquationDa
 			*(devEquationData + (i - 1)*m + j + (c*m * (m + 1))) = 1;
 		}
 
-		/*__syncthreads();
-
-		for (i = 0; i < m*m; i++) {
-			*(devEquationData + i + (c*m * (m + 1))) = A[i];
-		}
-		for (i = 0; i < m; i++) {
-			*(devEquationData + i + (m*m) + (c*m * (m + 1))) = B[i];
-		}*/
+		
 
 		c += blockDim.x * blockDim.y * gridDim.x * gridDim.y;
 	}
-	//free(A);
-	//free(B);
+
 }
 
 __global__ void devMemoryCopy(int m, double *src, double *dest, int len) {
@@ -131,13 +112,12 @@ __global__ void solveEquations(int d, double *devData, double *devEquationData, 
 
 	__syncthreads();
 	
+	//Limit copying of data to one thread to prevent race condition.
 	if (tid == 0) {
 		while (c < *devrh) {
 			for (i = 0; i < d; i++) {
 				*(devData + i + c * d) = *(devData + i + c * r * d);
-				/*if (c == 0) {
-					printf("%.5f\n", *(devData + i + c * d));
-				}*/
+				
 			}
 
 			c += 1;// blockDim.x * blockDim.y * gridDim.x * gridDim.y;
@@ -145,13 +125,5 @@ __global__ void solveEquations(int d, double *devData, double *devEquationData, 
 	}
 
 
-	//Debuggin purposes
-	/*__syncthreads();
-	if (a + b * (gridDim.x * blockDim.x) == 0) {
-		for (i = 0; i < d; i++) {
-			printf("%.5f\n", *(devData + i));
-		}
-		printf("\n");
-	}*/
-	//free(hypothesis);
+
 }

@@ -1,6 +1,6 @@
 #include "main.h"
 
-const int print = 1;
+const int print = 0;
 
 //Get the dimensions of the data
 //Set Valuues
@@ -24,23 +24,22 @@ int main(int argc, char *argv[]) {
 	int d;
 	int h;
 	std::string inputFile;
-	std::string outputFile = NULL;
+	std::string outputFile;
 
-	//printf("%d", argc);
 	for (int i = 0; i < argc; i++)
 		std::cout << argv[i] << std::endl;
 
 	if (argc == 5) {
-		
+		//Extra specification of output file for final hypothesis
 		inputFile = argv[1];
 		outputFile = argv[2];
 		d = atoi(argv[3]);
-		h = atoi(argv[4]); //Hyper parameter
+		h = atoi(argv[4]);
 	}
 	else if (argc == 4) {
 		inputFile = argv[1];
-		d = atoi(argv[3]);
-		h = atoi(argv[4]);
+		d = atoi(argv[2]);
+		h = atoi(argv[3]);
 	}
 
 	int m = d + 1; //Equivalent to d + 1
@@ -91,10 +90,10 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 	
-	//Check the GPU capabilities
+	//Check the GPU capabilities - NOT COMPLETED
 
 
-	//Debugging Purposes
+	//For debugging Purposes
 	if (print == 1) {
 		for (i = 0; i < d+4; i++) {
 			printf("%.5f\n", *(data + i));
@@ -103,10 +102,10 @@ int main(int argc, char *argv[]) {
 	}
 	
 	//Start timer
-	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+	//high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	startRadonMachine(d,h,data);
 	//End Timers
-	high_resolution_clock::time_point t2 = high_resolution_clock::now();
+	//high_resolution_clock::time_point t2 = high_resolution_clock::now();
 	
 	if (print == 1) {
 		for (i = 0; i < d+4; i++) {
@@ -115,23 +114,25 @@ int main(int argc, char *argv[]) {
 		printf("\n");
 	}
 	
-	auto duration = duration_cast<microseconds>(t2 - t1).count();
+	//auto duration = duration_cast<microseconds>(t2 - t1).count();
 
-	if (argc == 4)
+	//SAve Hypotheses to File
+	if (argc == 4) {
+		printf("CREATING FILE");
 		finalModel.open("hypothesis.csv", std::fstream::out);
-
-	if (argc == 5)
+	}
+	else if (argc == 5)
 		finalModel.open(outputFile, std::fstream::out);
 
-	for (i = 0; i++; i < d) {
-		finalModel << *(reinterpret_cast<long long *>(data + i)) << ", ";
+	for (i = 0; i < d; i++) {
+		finalModel << *(reinterpret_cast<long long *>(data + i)) << ',';
 	}
 	finalModel << std::endl;
 	finalModel.close();
 
-	times.open("times.txt",std::fstream::app | std::fstream::out);
-	times << duration << std::endl;
-	times.close();
+	//times.open("times.txt",std::fstream::app | std::fstream::out);
+	//times << duration << std::endl;
+	//times.close();
 	//std::cout << duration << " microseconds";
 	
 	
@@ -141,6 +142,7 @@ int main(int argc, char *argv[]) {
 
 void startRadonMachine(int d, int h, double *dataPoints ) {
 
+	//Define Variables
 	int m = d + 1;
 	int r = d + 2;
 	int rh = pow(r, h);
@@ -161,19 +163,15 @@ void startRadonMachine(int d, int h, double *dataPoints ) {
 
 	//Create Streams
 	streams = (cudaStream_t *)malloc(maxThreads * sizeof(cudaStream_t));
-	
-	//Allocate size of heap for device
-	//c1 = cudaDeviceSetLimit(cudaLimitMallocHeapSize, sizeof(double)*d * 16 * 16 * 8 * 8);
-	//assert(cudaSuccess == c1);
-	//cudaThreadSetLimit(cudaLimitMallocHeapSize, sizeof(double)*d*16*16*8*8);
 
 	for (i = 0; i < maxThreads; i++) {
 		c1 = cudaStreamCreateWithFlags(streams+i, cudaStreamNonBlocking);
 		assert(cudaSuccess == c1);
 	}
-
+	//Define Grid and Block Sizes
 	const dim3 blockSize(16, 16, 1);
 	const dim3 gridSize(8, 8, 1);
+
 
 	cusolverDnHandle_t cuSolver = NULL;
 	cusolverStatus_t status = CUSOLVER_STATUS_SUCCESS;
@@ -197,20 +195,18 @@ void startRadonMachine(int d, int h, double *dataPoints ) {
 	//Maintains the number of equations to be solved at each level of the radon tree
 	c1 = cudaMalloc(&devNofEquation, sizeof(int));
 	assert(cudaSuccess == c1);
-	//printM << <1, 1 >> > (m, m, devData, "A");
+	
 
 	for (i = 0; i < h; i++) {
+		//Begin Iterations through Radon Machine Algorithm
+
 		noOfEquations = pow(r, h - 1 - i);
 		cudaMemcpy(devNofEquation, &noOfEquations, sizeof(int), cudaMemcpyHostToDevice);
 		configureEquations << < gridSize, blockSize >> > (d, devData, devEquationData, devNofEquation);
 		cudaDeviceSynchronize();
 		threads = (noOfEquations > maxThreads ? maxThreads : noOfEquations);
 		equationsPerThread = noOfEquations / threads;
-		
-		//printf("%d threads %d equationsPerThread\n", threads, equationsPerThread);
-		cudaDeviceSynchronize();
-		//printM << <1, 1, 0 >> > (pow(r, h - i)*d, 1, devData, "A");
-		cudaDeviceSynchronize();
+
 		for (j = 0; j < threads; j++) {
 			thVect.push_back(std::thread(radonInstance,d, cuSolver, j, (devEquationData + (j*equationsPerThread*m * (m + 1))), equationsPerThread, devSolvedEquations, streams + j));
 		}
@@ -222,7 +218,7 @@ void startRadonMachine(int d, int h, double *dataPoints ) {
 		thVect.clear();
 		solveEquations << < gridSize, blockSize >> > (d, devData, devSolvedEquations, devNofEquation, hypothesisWorkspace);
 		cudaDeviceSynchronize();
-		//printM << <1, 1, 0 >> > (pow(r, h - i), 1, devData, "A");
+
 	}
 
 	cudaMemcpy(dataPoints, devData, sizeof(double) * rh * d, cudaMemcpyDeviceToHost);
@@ -295,14 +291,7 @@ void radonInstance(int d, cusolverDnHandle_t cuSolver, int threadId, double *dat
 
 		d_A = (data + (i*m * (m + 1)));
 		d_B = (data + (m*m) + (i*m * (m + 1)));
-		/*if (threadId == 7 && i == 0) {
-			printM << <1, 1, 0, *s >> > (m, m, d_A, "A");
-			printf("\n");
-			printM << <1, 1, 0, *s >> > (m, 1, d_B, "B");
-			printf("\n");
-			cudaStreamSynchronize(*s);
-			//printf("%d\n", lwork);
-		}*/
+		
 		cudaStreamSynchronize(*s);
 		if (pivot) {
 			status = cusolverDnDgetrf(
@@ -357,12 +346,6 @@ void radonInstance(int d, cusolverDnHandle_t cuSolver, int threadId, double *dat
 		}
 	
 		assert(CUSOLVER_STATUS_SUCCESS == status);
-
-		//cudaStreamSynchronize(*s);
-		/*if (threadId == 7 && i == 0) {
-			printM << <1, 1, 0, *s >> > (m, 1, d_B, "B");
-		}*/
-		
 
 		cudaStreamSynchronize(*s);
 		devMemoryCopy << <1, 1, 0, *s >> > (m, d_B, (solvedEquations + (threadId*equations*m) + i * m), m);
