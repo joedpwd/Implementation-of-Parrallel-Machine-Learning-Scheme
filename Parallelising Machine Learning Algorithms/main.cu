@@ -24,17 +24,24 @@ int main(int argc, char *argv[]) {
 	int d;
 	int h;
 	std::string inputFile;
+	std::string outputFile = NULL;
 
 	//printf("%d", argc);
+	for (int i = 0; i < argc; i++)
+		std::cout << argv[i] << std::endl;
 
-	//if (argc == 4) {
-		for(int i=0; i < argc; i++)
-			std::cout << argv[i] << std::endl;
-
+	if (argc == 5) {
+		
 		inputFile = argv[1];
-		d = atoi(argv[2]);
-		h = atoi(argv[3]); //Hyper parameter
-	//}
+		outputFile = argv[2];
+		d = atoi(argv[3]);
+		h = atoi(argv[4]); //Hyper parameter
+	}
+	else if (argc == 4) {
+		inputFile = argv[1];
+		d = atoi(argv[3]);
+		h = atoi(argv[4]);
+	}
 
 	int m = d + 1; //Equivalent to d + 1
 	int r = d + 2; //Radon number
@@ -53,6 +60,7 @@ int main(int argc, char *argv[]) {
 
 	//Output the execution time to file
 	std::ofstream times;
+	std::ofstream finalModel;
 	
 	//Read data in from CSV, data is stored in long long type and casted back into double type.
 	std::ifstream dataFile;
@@ -108,6 +116,18 @@ int main(int argc, char *argv[]) {
 	}
 	
 	auto duration = duration_cast<microseconds>(t2 - t1).count();
+
+	if (argc == 4)
+		finalModel.open("hypothesis.csv", std::fstream::out);
+
+	if (argc == 5)
+		finalModel.open(outputFile, std::fstream::out);
+
+	for (i = 0; i++; i < d) {
+		finalModel << *(reinterpret_cast<long long *>(data + i)) << ", ";
+	}
+	finalModel << std::endl;
+	finalModel.close();
 
 	times.open("times.txt",std::fstream::app | std::fstream::out);
 	times << duration << std::endl;
