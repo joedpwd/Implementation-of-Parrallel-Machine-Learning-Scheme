@@ -1,6 +1,6 @@
 #include "main.h"
 
-const int print = 0;
+const int print = 1;
 
 //Get the dimensions of the data
 //Set Valuues
