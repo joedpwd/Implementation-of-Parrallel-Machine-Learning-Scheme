@@ -208,7 +208,7 @@ void RadonMachineInstance(int d, int h, double *dataPoints) {
 	double **currentBarr;
 
 	int *devNofEquation;
-	int maxThreads = r;
+	int maxThreads = 1; //r
 	int threads;
 	int noOfEquations;
 	int equationsPerThread;
@@ -262,8 +262,9 @@ void RadonMachineInstance(int d, int h, double *dataPoints) {
 	c1 = cudaMalloc(&devNofEquation, sizeof(int));
 	assert(cudaSuccess == c1);
 	//printM << <1, 1 >> > (m, m, devData, "A");
+	printf("DEV %d\n", devEquationData);
 
-	initAarr << < gridSize, blockSize >> > (d, Aarrays, Barrays, devEquationData, rh/r);
+	initAarr << < 1, 1,0 >> > (d, Aarrays, Barrays, (double *)5, rh/r); //initAarr << < gridSize, blockSize >> > (d, Aarrays, Barrays, devEquationData, rh/r);
 	cudaDeviceSynchronize();
 	printPA << <1, 1, 0 >> > (rh/r, 1, Aarrays, "A");
 	cudaDeviceSynchronize();
@@ -356,12 +357,14 @@ void radonInstance(int d, cublasHandle_t *cublas, int threadId, double **d_A, do
 	cblsStat = cublasDgetrfBatched(*cublas, m, d_A, m, piv, info, equations);
 	assert(cblsStat == CUBLAS_STATUS_SUCCESS);
 	cblsStat = cublasDtrsmBatched(*cublas, CUBLAS_SIDE_LEFT, CUBLAS_FILL_MODE_LOWER, CUBLAS_OP_N, CUBLAS_DIAG_UNIT, m, 1, &alpha, d_A, m, d_B , m, equations);
+	//printM << <1, 1, 0, *s >> > (m, 1, *d_B, "b");
 	assert(cblsStat == CUBLAS_STATUS_SUCCESS);
 	cblsStat = cublasDtrsmBatched(*cublas, CUBLAS_SIDE_LEFT, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, CUBLAS_DIAG_NON_UNIT, m, 1, &alpha, d_A, m, d_B , m, equations);
+	//printM(m, 1, *d_B, "b");
 	assert(cblsStat == CUBLAS_STATUS_SUCCESS);
 	//cudaStreamSynchronize(*s);
-	for (i=0; i<equations; i++)
-		devMemoryCopy << <1, 1, 0, *s >> > (m, *(d_B)+i, (solvedEquations + (threadId*equations*m) + i * m), m);
+	//for (i=0; i<equations; i++)
+	//	devMemoryCopy << <1, 1, 0, *s >> > (m, *(d_B)+i, (solvedEquations + (threadId*equations*m) + i * m), m);
 	//cudaStreamSynchronize(*s);
 
 }

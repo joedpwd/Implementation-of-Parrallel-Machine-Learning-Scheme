@@ -52,10 +52,13 @@ __global__ void initAarr(int d, double **arr, double **brr, double *eqData, int 
 	int tid = a + b * (gridDim.x * blockDim.x);
 	int c, j, i;
 	c = tid;
+
+	if (c == 0)
+		printf("m - %d Basepointer - %d\n", m, eqData);
+
 	while (c < numEquations) {
-		printf("%d\n", c);
-		printf("%d\n", (eqData + (c*m * (m + 1)) + m * m));
-		printf("%d\n", (eqData + (c*m * (m + 1))));
+		printf("C%d B%d\n",c,(eqData + (c*m * (m + 1)) + m * m));
+		printf("C%d A%d\n",c, (eqData + (c*m * (m + 1))));
 		*(brr + c) = (eqData + (c*m * (m + 1)) + m*m);
 		*(arr + c) = (eqData + (c*m * (m + 1)));
 		c += blockDim.x * blockDim.y * gridDim.x * gridDim.y;
